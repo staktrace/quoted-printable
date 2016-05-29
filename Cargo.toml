@@ -1,6 +1,6 @@
 [package]
 name = "quoted_printable"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Kartikaya Gupta <kats@seldon.staktrace.com>"]
 description = "A simple decoder for quoted-printable input"
 documentation = "https://staktrace.github.io/quoted-printable/quoted_printable/"
