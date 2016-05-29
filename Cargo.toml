@@ -2,5 +2,12 @@
 name = "quoted_printable"
 version = "0.1.0"
 authors = ["Kartikaya Gupta <kats@seldon.staktrace.com>"]
+description = "A simple decoder for quoted-printable input"
+documentation = "https://github.com/staktrace/quoted-printable/blob/master/README.md"
+homepage = "https://github.com/staktrace/quoted-printable"
+repository = "https://github.com/staktrace/quoted-printable"
+readme = "README.md"
+keywords = ["decode", "quoted", "printable"]
+license = "0BSD"
 
 [dependencies]
