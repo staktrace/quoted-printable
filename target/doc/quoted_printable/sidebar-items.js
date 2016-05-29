@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ParseMode","A flag that allows control over the decoding strictness."],["QuotedPrintableError","An error type that represents different kinds of decoding errors."]],"fn":[["decode","Decodes a piece quoted-printable data."],["encode","Encodes some bytes into quoted-printable format."]]});
