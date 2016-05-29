@@ -18,7 +18,7 @@ pub enum ParseMode {
 pub enum QuotedPrintableError {
     /// A byte was found in the input that was outside of the allowed range. The
     /// allowed range is the horizontal tab (ASCII 0x09), CR/LF characters (ASCII
-    /// 0x0A and 0x0D), and anything in the ASCII range 0x20 to 0x7E, inclusive.
+    /// 0x0D and 0x0A), and anything in the ASCII range 0x20 to 0x7E, inclusive.
     InvalidByte,
     /// Lines where found in the input that exceeded 76 bytes in length, excluding
     /// the terminating CRLF.
@@ -170,6 +170,73 @@ pub fn decode(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableEr
     Ok(decoded)
 }
 
+fn append(result: &mut Vec<u8>, to_append: &[u8], bytes_on_line: &mut usize) {
+    if *bytes_on_line + to_append.len() > 76 {
+        result.extend([b'=', b'\r', b'\n'].iter().cloned());
+        *bytes_on_line = 0;
+    }
+    result.extend(to_append);
+    *bytes_on_line = *bytes_on_line + to_append.len();
+}
+
+/// Encodes some bytes into quoted-printable format.
+///
+/// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
+/// 6.7. This function encodes a set of raw bytes into a format conformant with
+/// that spec. The output contains CRLF pairs as needed so that each line is
+/// wrapped to 76 characters or less (not including the CRLF).
+///
+/// # Examples
+///
+/// ```
+///     use quoted_printable::encode;
+///     let encoded = encode("hello, \u{20ac} zone!".as_bytes());
+///     assert_eq!("hello, =E2=82=AC zone!", String::from_utf8(encoded).unwrap());
+/// ```
+pub fn encode(input: &[u8]) -> Vec<u8> {
+    let mut result = Vec::new();
+    let mut on_line : usize = 0;
+    let mut it = input.iter();
+    loop {
+        match it.next() {
+            Some(v @ &b'=') => {
+                append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line);
+            }
+            Some(v @ &b'\t') | Some(v @ &b' ' ... b'~') => {
+                append(&mut result, &[*v], &mut on_line);
+            }
+            Some(&b'\r') => {
+                match it.next() {
+                    Some(&b'\n') => {
+                        result.push(b'\r');
+                        result.push(b'\n');
+                        on_line = 0;
+                    }
+                    Some(v @ &b'=') => {
+                        append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line);
+                    }
+                    Some(v @ &b'\t') | Some(v @ &b' ' ... b'~') => {
+                        append(&mut result, "=0D".as_bytes(), &mut on_line);
+                        append(&mut result, &[*v], &mut on_line);
+                    }
+                    Some(v) => {
+                        append(&mut result, "=0D".as_bytes(), &mut on_line);
+                        append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line);
+                    }
+                    None => {
+                        append(&mut result, "=0D".as_bytes(), &mut on_line);
+                    }
+                };
+            }
+            Some(v) => {
+                append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line);
+            }
+            None => break,
+        };
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -231,5 +298,17 @@ mod tests {
                    String::from_utf8(decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Robust).unwrap()).unwrap());
         assert_eq!("1234567890123456789012345678901234567890123456789012345678901234567890123456",
                    String::from_utf8(decode("1234567890123456789012345678901234567890123456789012345678901234567890123456", ParseMode::Strict).unwrap()).unwrap());
+    }
+
+    #[test]
+    fn test_encode() {
+        assert_eq!("hello, world!", String::from_utf8(encode("hello, world!".as_bytes())).unwrap());
+        assert_eq!("hello,=0Cworld!", String::from_utf8(encode("hello,\u{c}world!".as_bytes())).unwrap());
+        assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat gets wrapped and stuff, woohoo!=C3=\r\n=89",
+                   String::from_utf8(encode("this\u{0}is\u{FF}a=long\rstring\nthat gets wrapped and stuff, woohoo!\u{c9}".as_bytes())).unwrap());
+        assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,   woohoo!=C3=89",
+                   String::from_utf8(encode("this\u{0}is\u{FF}a=long\rstring\nthat just fits in a line,   woohoo!\u{c9}".as_bytes())).unwrap());
+        assert_eq!("this \r\nhas linebreaks\r\n built right in.",
+                   String::from_utf8(encode("this \r\nhas linebreaks\r\n built right in.".as_bytes())).unwrap());
     }
 }

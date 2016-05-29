@@ -1,19 +1,22 @@
 quoted-printable
 ===
 
-A quoted-printable decoder (and eventually, hopefully, an encoder too).
+A quoted-printable decoder and encoder.
 
 API
 ---
-quoted-printable exposes just one function at the moment:
+quoted-printable exposes just two functions at the moment:
 
 ```rust
     decode(&str, ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
+    encode(&[u8]) -> Vec<u8>
 ```
 
-This function can be used to convert a quoted-printable string into the decoded bytes, as per the description in [IETF RFC 2045, section 6.7](https://tools.ietf.org/html/rfc2045#section-6.7).
+The decode function can be used to convert a quoted-printable string into the decoded bytes, as per the description in [IETF RFC 2045, section 6.7](https://tools.ietf.org/html/rfc2045#section-6.7).
 The ParseMode option can be used to control whether the decoding is "strict" or "robust", as per the comments in that RFC.
 In general you should probably use "robust" decoding, as it will gracefully handle more malformed input.
+
+The encode function obviously does the reverse, and converts a set of raw bytes into quoted-printable.
 
 Documentation
 ---
