@@ -1,19 +1,38 @@
 use std::fmt;
 use std::error;
 
+/// A flag that allows control over the decoding strictness.
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum ParseMode {
+    /// Perform strict checking over the input, and return an error if any
+    /// input appears malformed.
     Strict,
+    /// Perform robust parsing, and gracefully handle any malformed input. This
+    /// can result in the decoded output being different than what was intended.
     Robust,
 }
 
+/// An error type that represents different kinds of decoding errors.
 #[derive(Debug)]
 pub enum QuotedPrintableError {
+    /// A byte was found in the input that was outside of the allowed range. The
+    /// allowed range is the horizontal tab (ASCII 0x09), CR/LF characters (ASCII
+    /// 0x0A and 0x0D), and anything in the ASCII range 0x20 to 0x7E, inclusive.
     InvalidByte,
+    /// Lines where found in the input that exceeded 76 bytes in length, excluding
+    /// the terminating CRLF.
     LineTooLong,
+    /// An '=' character was found in the input without the proper number of
+    /// hex-characters following it. This includes '=' characters followed
+    /// by a single character and then the CRLF pair, for example.
     IncompleteHexOctet,
+    /// An '=' character was found with two following characters, but they were
+    /// not hex characters. '=Hi' for example would be an invalid encoding.
     InvalidHexOctet,
+    /// An '=' character was found with two following hex characters, but the
+    /// hex characters were lowercase rather than uppercase. The spec explicitly
+    /// requires uppercase hex to be used, so this is considered an error.
     LowercaseHexOctet,
 }
 
@@ -39,6 +58,33 @@ impl error::Error for QuotedPrintableError {
     }
 }
 
+/// Decodes a piece quoted-printable data.
+///
+/// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
+/// 6.7. This function attempts to decode input that is conformant with that
+/// spec. Note that quoted-printable encoding is independent of charset, and so
+/// this function returns a Vec<u8> of bytes upon success. It is up to the caller
+/// to convert that to a String if desired; the charset required to do so must
+/// come from somewhere else.
+///
+/// # Examples
+///
+/// ```
+///     use quoted_printable::{decode, ParseMode};
+///     let decoded = decode("hello=3Dworld=0D=0A", ParseMode::Robust).unwrap();
+///     assert_eq!("hello=world\r\n", String::from_utf8(decoded).unwrap());
+/// ```
+///
+/// # Errors
+///
+/// If this function is called with ParseMode::Strict, then it may return
+/// a QuotedPrintableError if it detects that the input does not strictly conform
+/// to the quoted-printable spec. If this function is called with ParseMode::Robust,
+/// then it will attempt to gracefully handle any errors that arise. This might
+/// result in input bytes being stripped out and ignored in some cases. Refer
+/// to IETF RFC 2045, section 6.7 for details on what constitutes valid and
+/// invalid input, and what a "robust" implementation would do in the face of
+/// invalid input.
 pub fn decode(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
     let filtered = input.chars()
         .filter(|&c| c == '\t' || c == '\r' || c == '\n' || (c >= ' ' && c <= '~'))
