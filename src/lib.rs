@@ -48,28 +48,33 @@ pub fn decode(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableEr
     }
     let mut decoded = Vec::new();
     let mut lines = filtered.lines();
-    let mut add_line_break = false;
+    let mut add_line_break = None;
     loop {
         let mut bytes = match lines.next() {
             Some(v) => v.trim_right().bytes(),
-            None => break,
+            None => {
+                if mode == ParseMode::Strict && add_line_break == Some(false) {
+                    return Err(QuotedPrintableError::IncompleteHexOctet);
+                }
+                break;
+            }
         };
 
         if mode == ParseMode::Strict && bytes.len() > 76 {
             return Err(QuotedPrintableError::LineTooLong);
         }
 
-        if add_line_break {
+        if add_line_break == Some(true) {
             decoded.push(b'\r');
             decoded.push(b'\n');
-            add_line_break = false;
+            add_line_break = Some(false);
         }
 
         loop {
             let byte = match bytes.next() {
                 Some(v) => v,
                 None => {
-                    add_line_break = true;
+                    add_line_break = Some(true);
                     break;
                 }
             };
@@ -87,7 +92,7 @@ pub fn decode(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableEr
                         }
                         decoded.push(byte);
                         decoded.push(upper);
-                        add_line_break = true;
+                        add_line_break = Some(true);
                         break;
                     }
                 };
@@ -145,8 +150,8 @@ mod tests {
                                             ParseMode::Strict)
                            .unwrap())
                        .unwrap());
-        assert_eq!("hello world\r\ngoodbye world ",
-                   String::from_utf8(decode("hello world   \r\ngoodbye world =  ",
+        assert_eq!("hello world\r\ngoodbye world x",
+                   String::from_utf8(decode("hello world   \r\ngoodbye world =  \r\nx",
                                             ParseMode::Strict)
                            .unwrap())
                        .unwrap());
@@ -154,6 +159,10 @@ mod tests {
         assert_eq!(true, decode("hello world=x", ParseMode::Strict).is_err());
         assert_eq!("hello world=x",
                    String::from_utf8(decode("hello world=x", ParseMode::Robust).unwrap()).unwrap());
+
+        assert_eq!(true, decode("hello =world=", ParseMode::Strict).is_err());
+        assert_eq!("hello =world",
+                   String::from_utf8(decode("hello =world=", ParseMode::Robust).unwrap()).unwrap());
 
         assert_eq!(true, decode("hello world=3d", ParseMode::Strict).is_err());
         assert_eq!("hello world=",
