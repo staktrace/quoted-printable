@@ -8,6 +8,6 @@ homepage = "https://github.com/staktrace/quoted-printable"
 repository = "https://github.com/staktrace/quoted-printable"
 readme = "README.md"
 keywords = ["decode", "quoted", "printable"]
-license = "0BSD"
+license-file = "LICENSE"
 
 [dependencies]
