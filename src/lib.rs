@@ -1,3 +1,6 @@
+use std::fmt;
+use std::error;
+
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum ParseMode {
@@ -12,6 +15,28 @@ pub enum QuotedPrintableError {
     IncompleteHexOctet,
     InvalidHexOctet,
     LowercaseHexOctet,
+}
+
+impl fmt::Display for QuotedPrintableError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            QuotedPrintableError::InvalidByte => write!(f, "A unallowed byte was found in the quoted-printable input"),
+            QuotedPrintableError::LineTooLong => write!(f, "A line length in the quoted-printed input exceeded 76 bytes"),
+            QuotedPrintableError::IncompleteHexOctet => write!(f, "A '=' followed by only one character was found in the input"),
+            QuotedPrintableError::InvalidHexOctet => write!(f, "A '=' followed by non-hex characters was found in the input"),
+            QuotedPrintableError::LowercaseHexOctet => write!(f, "A '=' was followed by lowercase hex characters"),
+        }
+    }
+}
+
+impl error::Error for QuotedPrintableError {
+    fn description(&self) -> &str {
+        "An error occurred while attempting to decode quoted-printable input"
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        None
+    }
 }
 
 pub fn decode(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
