@@ -20,7 +20,7 @@ The encode function obviously does the reverse, and converts a set of raw bytes 
 
 Documentation
 ---
-See the rustdoc at [http://staktrace.github.io/quoted-printable/quoted_printable/](http://staktrace.github.io/quoted-printable/quoted_printable/).
+See the rustdoc at [http://staktrace.github.io/quoted-printable/target/doc/quoted_printable/](http://staktrace.github.io/quoted-printable/target/doc/quoted_printable/).
 
 Other notes
 ---
