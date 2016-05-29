@@ -95,9 +95,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_basic_qp() {
+    fn test_decode() {
         assert_eq!("hello world", String::from_utf8(decode("hello world", ParseMode::Strict).unwrap()).unwrap());
         assert_eq!("Now's the time for all folk to come to the aid of their country.",
                    String::from_utf8(decode("Now's the time =\r\nfor all folk to come=\r\n to the aid of their country.", ParseMode::Strict).unwrap()).unwrap());
+        assert_eq!("\r\nhello=world", String::from_utf8(decode("=0D=0Ahello=3Dworld", ParseMode::Strict).unwrap()).unwrap());
+        assert_eq!("hello world\r\ngoodbye world", String::from_utf8(decode("hello world\r\ngoodbye world", ParseMode::Strict).unwrap()).unwrap());
+        assert_eq!("hello world\r\ngoodbye world", String::from_utf8(decode("hello world   \r\ngoodbye world   ", ParseMode::Strict).unwrap()).unwrap());
+        assert_eq!("hello world\r\ngoodbye world ", String::from_utf8(decode("hello world   \r\ngoodbye world =  ", ParseMode::Strict).unwrap()).unwrap());
+
+        assert_eq!(true, decode("hello world=x", ParseMode::Strict).is_err());
+        assert_eq!("hello world=x", String::from_utf8(decode("hello world=x", ParseMode::Robust).unwrap()).unwrap());
+
+        assert_eq!(true, decode("hello world=3d", ParseMode::Strict).is_err());
+        assert_eq!("hello world=", String::from_utf8(decode("hello world=3d", ParseMode::Robust).unwrap()).unwrap());
+
+        assert_eq!(true, decode("hello world=3m", ParseMode::Strict).is_err());
+        assert_eq!("hello world=3m", String::from_utf8(decode("hello world=3m", ParseMode::Robust).unwrap()).unwrap());
+
+        assert_eq!(true, decode("hello\u{FF}world", ParseMode::Strict).is_err());
+        assert_eq!("helloworld", String::from_utf8(decode("hello\u{FF}world", ParseMode::Robust).unwrap()).unwrap());
+
+        assert_eq!(true, decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Strict).is_err());
+        assert_eq!("12345678901234567890123456789012345678901234567890123456789012345678901234567", String::from_utf8(decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Robust).unwrap()).unwrap());
+        assert_eq!("1234567890123456789012345678901234567890123456789012345678901234567890123456", String::from_utf8(decode("1234567890123456789012345678901234567890123456789012345678901234567890123456", ParseMode::Strict).unwrap()).unwrap());
     }
 }
