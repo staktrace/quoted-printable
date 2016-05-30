@@ -50,7 +50,7 @@ impl fmt::Display for QuotedPrintableError {
 
 impl error::Error for QuotedPrintableError {
     fn description(&self) -> &str {
-        "An error occurred while attempting to decode quoted-printable input"
+        "invalid quoted-printable input"
     }
 
     fn cause(&self) -> Option<&error::Error> {
