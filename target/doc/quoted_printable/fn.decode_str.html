@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `quoted_printable` crate.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, quoted_printable">
+    <meta name="description" content="API documentation for the Rust `decode_str` fn in crate `quoted_printable`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, decode_str">
 
-    <title>quoted_printable - Rust</title>
+    <title>quoted_printable::decode_str - Rust</title>
 
     <link rel="stylesheet" type="text/css" href="../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../main.css">
@@ -28,7 +28,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'></p><script>window.sidebarCurrent = {name: 'quoted_printable', ty: 'mod', relpath: '../'};</script>
+        <p class='location'><a href='index.html'>quoted_printable</a></p><script>window.sidebarCurrent = {name: 'decode_str', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script>
     </nav>
 
     <nav class="sub">
@@ -42,52 +42,22 @@
         </form>
     </nav>
 
-    <section id='main' class="content mod">
-<h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>quoted_printable</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content fn">
+<h1 class='fqn'><span class='in-band'>Function <a href='index.html'>quoted_printable</a>::<wbr><a class='fn' href=''>decode_str</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-0' class='srclink' href='../src/quoted_printable/src/lib.rs.html#1-330' title='goto source code'>[src]</a></span></h1>
-<h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class='enum' href='enum.ParseMode.html'
-                                  title='quoted_printable::ParseMode'>ParseMode</a></td>
-                           <td class='docblock short'>
-                                <p>A flag that allows control over the decoding strictness.</p>
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class='enum' href='enum.QuotedPrintableError.html'
-                                  title='quoted_printable::QuotedPrintableError'>QuotedPrintableError</a></td>
-                           <td class='docblock short'>
-                                <p>An error type that represents different kinds of decoding errors.</p>
-                           </td>
-                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class='fn' href='fn.decode.html'
-                                  title='quoted_printable::decode'>decode</a></td>
-                           <td class='docblock short'>
-                                <p>Decodes a piece of quoted-printable data.</p>
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class='fn' href='fn.decode_str.html'
-                                  title='quoted_printable::decode_str'>decode_str</a></td>
-                           <td class='docblock short'>
-                                <p>Decodes a piece of quoted-printable data. Refer to the documentation for
+               </span><a id='src-50' class='srclink' href='../src/quoted_printable/src/lib.rs.html#72-74' title='goto source code'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn decode_str(input: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, mode: <a class='enum' href='../quoted_printable/enum.ParseMode.html' title='quoted_printable::ParseMode'>ParseMode</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>&gt;, <a class='enum' href='../quoted_printable/enum.QuotedPrintableError.html' title='quoted_printable::QuotedPrintableError'>QuotedPrintableError</a>&gt;</pre><div class='docblock'><p>Decodes a piece of quoted-printable data. Refer to the documentation for
 decode; this is just a wrapper that calls that function on the utf-8 bytes
 from the provided string.</p>
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class='fn' href='fn.encode.html'
-                                  title='quoted_printable::encode'>encode</a></td>
-                           <td class='docblock short'>
-                                <p>Encodes some bytes into quoted-printable format.</p>
-                           </td>
-                       </tr></table></section>
+
+<h1 id='examples' class='section-header'><a href='#examples'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+    <span class='kw'>use</span> <span class='ident'>quoted_printable</span>::{<span class='ident'>decode_str</span>, <span class='ident'>ParseMode</span>};
+    <span class='kw'>let</span> <span class='ident'>decoded</span> <span class='op'>=</span> <span class='ident'>decode_str</span>(<span class='string'>&quot;hello=3Dworld=0D=0A&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Robust</span>).<span class='ident'>unwrap</span>();
+    <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello=world\r\n&quot;</span>, <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decoded</span>).<span class='ident'>unwrap</span>());</pre>
+</div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
