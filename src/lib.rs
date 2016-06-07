@@ -58,7 +58,22 @@ impl error::Error for QuotedPrintableError {
     }
 }
 
-/// Decodes a piece quoted-printable data.
+/// Decodes a piece of quoted-printable data. Refer to the documentation for
+/// decode; this is just a wrapper that calls that function on the utf-8 bytes
+/// from the provided string.
+///
+/// # Examples
+///
+/// ```
+///     use quoted_printable::{decode_str, ParseMode};
+///     let decoded = decode_str("hello=3Dworld=0D=0A", ParseMode::Robust).unwrap();
+///     assert_eq!("hello=world\r\n", String::from_utf8(decoded).unwrap());
+/// ```
+pub fn decode_str(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
+    decode(input.as_bytes(), mode)
+}
+
+/// Decodes a piece of quoted-printable data.
 ///
 /// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
 /// 6.7. This function attempts to decode input that is conformant with that
@@ -71,7 +86,7 @@ impl error::Error for QuotedPrintableError {
 ///
 /// ```
 ///     use quoted_printable::{decode, ParseMode};
-///     let decoded = decode("hello=3Dworld=0D=0A", ParseMode::Robust).unwrap();
+///     let decoded = decode("hello=3Dworld=0D=0A".as_bytes(), ParseMode::Robust).unwrap();
 ///     assert_eq!("hello=world\r\n", String::from_utf8(decoded).unwrap());
 /// ```
 ///
@@ -85,9 +100,10 @@ impl error::Error for QuotedPrintableError {
 /// to IETF RFC 2045, section 6.7 for details on what constitutes valid and
 /// invalid input, and what a "robust" implementation would do in the face of
 /// invalid input.
-pub fn decode(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
-    let filtered = input.chars()
-        .filter(|&c| c == '\t' || c == '\r' || c == '\n' || (c >= ' ' && c <= '~'))
+pub fn decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
+    let filtered = input.into_iter()
+        .filter(|&c| *c == b'\t' || *c == b'\r' || *c == b'\n' || (*c >= b' ' && *c <= b'~'))
+        .map(|&c| c as char)
         .collect::<String>();
     if mode == ParseMode::Strict && filtered.len() != input.len() {
         return Err(QuotedPrintableError::InvalidByte);
@@ -244,60 +260,60 @@ mod tests {
     #[test]
     fn test_decode() {
         assert_eq!("hello world",
-                   String::from_utf8(decode("hello world", ParseMode::Strict).unwrap()).unwrap());
+                   String::from_utf8(decode_str("hello world", ParseMode::Strict).unwrap()).unwrap());
         assert_eq!("Now's the time for all folk to come to the aid of their country.",
-                   String::from_utf8(decode("Now's the time =\r\nfor all folk to come=\r\n to \
+                   String::from_utf8(decode_str("Now's the time =\r\nfor all folk to come=\r\n to \
                                              the aid of their country.",
                                             ParseMode::Strict)
                            .unwrap())
                        .unwrap());
         assert_eq!("\r\nhello=world",
-                   String::from_utf8(decode("=0D=0Ahello=3Dworld", ParseMode::Strict).unwrap())
+                   String::from_utf8(decode_str("=0D=0Ahello=3Dworld", ParseMode::Strict).unwrap())
                        .unwrap());
         assert_eq!("hello world\r\ngoodbye world",
-                   String::from_utf8(decode("hello world\r\ngoodbye world", ParseMode::Strict)
+                   String::from_utf8(decode_str("hello world\r\ngoodbye world", ParseMode::Strict)
                            .unwrap())
                        .unwrap());
         assert_eq!("hello world\r\ngoodbye world",
-                   String::from_utf8(decode("hello world   \r\ngoodbye world   ",
+                   String::from_utf8(decode_str("hello world   \r\ngoodbye world   ",
                                             ParseMode::Strict)
                            .unwrap())
                        .unwrap());
         assert_eq!("hello world\r\ngoodbye world x",
-                   String::from_utf8(decode("hello world   \r\ngoodbye world =  \r\nx",
+                   String::from_utf8(decode_str("hello world   \r\ngoodbye world =  \r\nx",
                                             ParseMode::Strict)
                            .unwrap())
                        .unwrap());
 
-        assert_eq!(true, decode("hello world=x", ParseMode::Strict).is_err());
+        assert_eq!(true, decode_str("hello world=x", ParseMode::Strict).is_err());
         assert_eq!("hello world=x",
-                   String::from_utf8(decode("hello world=x", ParseMode::Robust).unwrap()).unwrap());
+                   String::from_utf8(decode_str("hello world=x", ParseMode::Robust).unwrap()).unwrap());
 
-        assert_eq!(true, decode("hello =world=", ParseMode::Strict).is_err());
+        assert_eq!(true, decode_str("hello =world=", ParseMode::Strict).is_err());
         assert_eq!("hello =world",
-                   String::from_utf8(decode("hello =world=", ParseMode::Robust).unwrap()).unwrap());
+                   String::from_utf8(decode_str("hello =world=", ParseMode::Robust).unwrap()).unwrap());
 
-        assert_eq!(true, decode("hello world=3d", ParseMode::Strict).is_err());
+        assert_eq!(true, decode_str("hello world=3d", ParseMode::Strict).is_err());
         assert_eq!("hello world=",
-                   String::from_utf8(decode("hello world=3d", ParseMode::Robust).unwrap())
+                   String::from_utf8(decode_str("hello world=3d", ParseMode::Robust).unwrap())
                        .unwrap());
 
-        assert_eq!(true, decode("hello world=3m", ParseMode::Strict).is_err());
+        assert_eq!(true, decode_str("hello world=3m", ParseMode::Strict).is_err());
         assert_eq!("hello world=3m",
-                   String::from_utf8(decode("hello world=3m", ParseMode::Robust).unwrap())
+                   String::from_utf8(decode_str("hello world=3m", ParseMode::Robust).unwrap())
                        .unwrap());
 
-        assert_eq!(true, decode("hello\u{FF}world", ParseMode::Strict).is_err());
+        assert_eq!(true, decode_str("hello\u{FF}world", ParseMode::Strict).is_err());
         assert_eq!("helloworld",
-                   String::from_utf8(decode("hello\u{FF}world", ParseMode::Robust).unwrap())
+                   String::from_utf8(decode_str("hello\u{FF}world", ParseMode::Robust).unwrap())
                        .unwrap());
 
         assert_eq!(true,
-                   decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Strict).is_err());
+                   decode_str("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Strict).is_err());
         assert_eq!("12345678901234567890123456789012345678901234567890123456789012345678901234567",
-                   String::from_utf8(decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Robust).unwrap()).unwrap());
+                   String::from_utf8(decode_str("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Robust).unwrap()).unwrap());
         assert_eq!("1234567890123456789012345678901234567890123456789012345678901234567890123456",
-                   String::from_utf8(decode("1234567890123456789012345678901234567890123456789012345678901234567890123456", ParseMode::Strict).unwrap()).unwrap());
+                   String::from_utf8(decode_str("1234567890123456789012345678901234567890123456789012345678901234567890123456", ParseMode::Strict).unwrap()).unwrap());
     }
 
     #[test]

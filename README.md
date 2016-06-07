@@ -5,11 +5,17 @@ A quoted-printable decoder and encoder.
 
 API
 ---
-quoted-printable exposes just two functions at the moment:
+quoted-printable exposes two functions at the moment:
 
 ```rust
-    decode(&str, ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
+    decode(&[u8], ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
     encode(&[u8]) -> Vec<u8>
+```
+
+as well as an extra helper:
+
+```rust
+    decode_str(&str, ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
 ```
 
 The decode function can be used to convert a quoted-printable string into the decoded bytes, as per the description in [IETF RFC 2045, section 6.7](https://tools.ietf.org/html/rfc2045#section-6.7).
