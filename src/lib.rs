@@ -102,8 +102,10 @@ pub fn decode_str(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintab
 /// invalid input.
 pub fn decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
     let filtered = input.into_iter()
-        .filter(|&c| *c == b'\t' || *c == b'\r' || *c == b'\n' || (*c >= b' ' && *c <= b'~'))
-        .map(|&c| c as char)
+        .filter_map(|&c| match c {
+            b'\t' | b'\r' | b'\n' | b' '...b'~' => Some(c as char),
+            _ => None,
+        })
         .collect::<String>();
     if mode == ParseMode::Strict && filtered.len() != input.len() {
         return Err(QuotedPrintableError::InvalidByte);
