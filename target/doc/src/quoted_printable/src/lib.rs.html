@@ -372,6 +372,45 @@
 <span id="328">328</span>
 <span id="329">329</span>
 <span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
 </pre><pre class='rust '>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>fmt</span>;
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>error</span>;
@@ -414,11 +453,25 @@
 <span class='kw'>impl</span> <span class='ident'>fmt</span>::<span class='ident'>Display</span> <span class='kw'>for</span> <span class='ident'>QuotedPrintableError</span> {
     <span class='kw'>fn</span> <span class='ident'>fmt</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>f</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>fmt</span>::<span class='ident'>Formatter</span>) <span class='op'>-&gt;</span> <span class='ident'>fmt</span>::<span class='prelude-ty'>Result</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>InvalidByte</span> <span class='op'>=&gt;</span> <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;A unallowed byte was found in the quoted-printable input&quot;</span>),
-            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>LineTooLong</span> <span class='op'>=&gt;</span> <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;A line length in the quoted-printed input exceeded 76 bytes&quot;</span>),
-            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>IncompleteHexOctet</span> <span class='op'>=&gt;</span> <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;A &#39;=&#39; followed by only one character was found in the input&quot;</span>),
-            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>InvalidHexOctet</span> <span class='op'>=&gt;</span> <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;A &#39;=&#39; followed by non-hex characters was found in the input&quot;</span>),
-            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>LowercaseHexOctet</span> <span class='op'>=&gt;</span> <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;A &#39;=&#39; was followed by lowercase hex characters&quot;</span>),
+            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>InvalidByte</span> <span class='op'>=&gt;</span> {
+                <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>,
+                       <span class='string'>&quot;A unallowed byte was found in the quoted-printable input&quot;</span>)
+            }
+            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>LineTooLong</span> <span class='op'>=&gt;</span> {
+                <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>,
+                       <span class='string'>&quot;A line length in the quoted-printed input exceeded 76 bytes&quot;</span>)
+            }
+            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>IncompleteHexOctet</span> <span class='op'>=&gt;</span> {
+                <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>,
+                       <span class='string'>&quot;A &#39;=&#39; followed by only one character was found in the input&quot;</span>)
+            }
+            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>InvalidHexOctet</span> <span class='op'>=&gt;</span> {
+                <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>,
+                       <span class='string'>&quot;A &#39;=&#39; followed by non-hex characters was found in the input&quot;</span>)
+            }
+            <span class='ident'>QuotedPrintableError</span>::<span class='ident'>LowercaseHexOctet</span> <span class='op'>=&gt;</span> {
+                <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;A &#39;=&#39; was followed by lowercase hex characters&quot;</span>)
+            }
         }
     }
 }
@@ -477,8 +530,10 @@
 <span class='doccomment'>/// invalid input.</span>
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>decode</span>(<span class='ident'>input</span>: <span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>], <span class='ident'>mode</span>: <span class='ident'>ParseMode</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>u8</span><span class='op'>&gt;</span>, <span class='ident'>QuotedPrintableError</span><span class='op'>&gt;</span> {
     <span class='kw'>let</span> <span class='ident'>filtered</span> <span class='op'>=</span> <span class='ident'>input</span>.<span class='ident'>into_iter</span>()
-        .<span class='ident'>filter</span>(<span class='op'>|</span><span class='kw-2'>&amp;</span><span class='ident'>c</span><span class='op'>|</span> <span class='op'>*</span><span class='ident'>c</span> <span class='op'>==</span> <span class='string'>b&#39;\t&#39;</span> <span class='op'>||</span> <span class='op'>*</span><span class='ident'>c</span> <span class='op'>==</span> <span class='string'>b&#39;\r&#39;</span> <span class='op'>||</span> <span class='op'>*</span><span class='ident'>c</span> <span class='op'>==</span> <span class='string'>b&#39;\n&#39;</span> <span class='op'>||</span> (<span class='op'>*</span><span class='ident'>c</span> <span class='op'>&gt;=</span> <span class='string'>b&#39; &#39;</span> <span class='op'>&amp;&amp;</span> <span class='op'>*</span><span class='ident'>c</span> <span class='op'>&lt;=</span> <span class='string'>b&#39;~&#39;</span>))
-        .<span class='ident'>map</span>(<span class='op'>|</span><span class='kw-2'>&amp;</span><span class='ident'>c</span><span class='op'>|</span> <span class='ident'>c</span> <span class='kw'>as</span> <span class='ident'>char</span>)
+        .<span class='ident'>filter_map</span>(<span class='op'>|</span><span class='kw-2'>&amp;</span><span class='ident'>c</span><span class='op'>|</span> <span class='kw'>match</span> <span class='ident'>c</span> {
+            <span class='string'>b&#39;\t&#39;</span> <span class='op'>|</span> <span class='string'>b&#39;\r&#39;</span> <span class='op'>|</span> <span class='string'>b&#39;\n&#39;</span> <span class='op'>|</span> <span class='string'>b&#39; &#39;</span>...<span class='string'>b&#39;~&#39;</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Some</span>(<span class='ident'>c</span> <span class='kw'>as</span> <span class='ident'>char</span>),
+            _ <span class='op'>=&gt;</span> <span class='prelude-val'>None</span>,
+        })
         .<span class='ident'>collect</span>::<span class='op'>&lt;</span><span class='ident'>String</span><span class='op'>&gt;</span>();
     <span class='kw'>if</span> <span class='ident'>mode</span> <span class='op'>==</span> <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span> <span class='op'>&amp;&amp;</span> <span class='ident'>filtered</span>.<span class='ident'>len</span>() <span class='op'>!=</span> <span class='ident'>input</span>.<span class='ident'>len</span>() {
         <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>QuotedPrintableError</span>::<span class='ident'>InvalidByte</span>);
@@ -586,14 +641,15 @@
 <span class='doccomment'>/// ```</span>
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>encode</span>(<span class='ident'>input</span>: <span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>]) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>u8</span><span class='op'>&gt;</span> {
     <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='ident'>Vec</span>::<span class='ident'>new</span>();
-    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>on_line</span> : <span class='ident'>usize</span> <span class='op'>=</span> <span class='number'>0</span>;
+    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>on_line</span>: <span class='ident'>usize</span> <span class='op'>=</span> <span class='number'>0</span>;
     <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>it</span> <span class='op'>=</span> <span class='ident'>input</span>.<span class='ident'>iter</span>();
     <span class='kw'>loop</span> {
         <span class='kw'>match</span> <span class='ident'>it</span>.<span class='ident'>next</span>() {
             <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39;=&#39;</span>) <span class='op'>=&gt;</span> {
                 <span class='ident'>append</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>result</span>, <span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;={:02X}&quot;</span>, <span class='op'>*</span><span class='ident'>v</span>).<span class='ident'>as_bytes</span>(), <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>on_line</span>);
             }
-            <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39;\t&#39;</span>) <span class='op'>|</span> <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39; &#39;</span> ... <span class='string'>b&#39;~&#39;</span>) <span class='op'>=&gt;</span> {
+            <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39;\t&#39;</span>) <span class='op'>|</span>
+            <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39; &#39;</span>...<span class='string'>b&#39;~&#39;</span>) <span class='op'>=&gt;</span> {
                 <span class='ident'>append</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>result</span>, <span class='kw-2'>&amp;</span>[<span class='op'>*</span><span class='ident'>v</span>], <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>on_line</span>);
             }
             <span class='prelude-val'>Some</span>(<span class='kw-2'>&amp;</span><span class='string'>b&#39;\r&#39;</span>) <span class='op'>=&gt;</span> {
@@ -606,7 +662,8 @@
                     <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39;=&#39;</span>) <span class='op'>=&gt;</span> {
                         <span class='ident'>append</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>result</span>, <span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;={:02X}&quot;</span>, <span class='op'>*</span><span class='ident'>v</span>).<span class='ident'>as_bytes</span>(), <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>on_line</span>);
                     }
-                    <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39;\t&#39;</span>) <span class='op'>|</span> <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39; &#39;</span> ... <span class='string'>b&#39;~&#39;</span>) <span class='op'>=&gt;</span> {
+                    <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39;\t&#39;</span>) <span class='op'>|</span>
+                    <span class='prelude-val'>Some</span>(<span class='ident'>v</span> <span class='kw-2'>@</span> <span class='kw-2'>&amp;</span><span class='string'>b&#39; &#39;</span>...<span class='string'>b&#39;~&#39;</span>) <span class='op'>=&gt;</span> {
                         <span class='ident'>append</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>result</span>, <span class='string'>&quot;=0D&quot;</span>.<span class='ident'>as_bytes</span>(), <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>on_line</span>);
                         <span class='ident'>append</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>result</span>, <span class='kw-2'>&amp;</span>[<span class='op'>*</span><span class='ident'>v</span>], <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>on_line</span>);
                     }
@@ -635,50 +692,60 @@
     <span class='attribute'>#[<span class='ident'>test</span>]</span>
     <span class='kw'>fn</span> <span class='ident'>test_decode</span>() {
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello world&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>unwrap</span>()).<span class='ident'>unwrap</span>());
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>unwrap</span>())
+                       .<span class='ident'>unwrap</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;Now&#39;s the time for all folk to come to the aid of their country.&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;Now&#39;s the time =\r\nfor all folk to come=\r\n to \
-                                             the aid of their country.&quot;</span>,
-                                            <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;Now&#39;s the time =\r\nfor all folk to come=\r\n \
+                                                 to the aid of their country.&quot;</span>,
+                                                <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
                            .<span class='ident'>unwrap</span>())
                        .<span class='ident'>unwrap</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;\r\nhello=world&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;=0D=0Ahello=3Dworld&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>unwrap</span>())
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;=0D=0Ahello=3Dworld&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
+                           .<span class='ident'>unwrap</span>())
                        .<span class='ident'>unwrap</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello world\r\ngoodbye world&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world\r\ngoodbye world&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world\r\ngoodbye world&quot;</span>,
+                                                <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
                            .<span class='ident'>unwrap</span>())
                        .<span class='ident'>unwrap</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello world\r\ngoodbye world&quot;</span>,
                    <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world   \r\ngoodbye world   &quot;</span>,
-                                            <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
+                                                <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
                            .<span class='ident'>unwrap</span>())
                        .<span class='ident'>unwrap</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello world\r\ngoodbye world x&quot;</span>,
                    <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world   \r\ngoodbye world =  \r\nx&quot;</span>,
-                                            <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
+                                                <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>)
                            .<span class='ident'>unwrap</span>())
                        .<span class='ident'>unwrap</span>());
 
-        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>, <span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=x&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>,
+                   <span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=x&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello world=x&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=x&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Robust</span>).<span class='ident'>unwrap</span>()).<span class='ident'>unwrap</span>());
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=x&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Robust</span>).<span class='ident'>unwrap</span>())
+                       .<span class='ident'>unwrap</span>());
 
-        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>, <span class='ident'>decode_str</span>(<span class='string'>&quot;hello =world=&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>,
+                   <span class='ident'>decode_str</span>(<span class='string'>&quot;hello =world=&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello =world&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello =world=&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Robust</span>).<span class='ident'>unwrap</span>()).<span class='ident'>unwrap</span>());
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello =world=&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Robust</span>).<span class='ident'>unwrap</span>())
+                       .<span class='ident'>unwrap</span>());
 
-        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>, <span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=3d&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>,
+                   <span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=3d&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello world=&quot;</span>,
                    <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=3d&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Robust</span>).<span class='ident'>unwrap</span>())
                        .<span class='ident'>unwrap</span>());
 
-        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>, <span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=3m&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>,
+                   <span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=3m&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello world=3m&quot;</span>,
                    <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello world=3m&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Robust</span>).<span class='ident'>unwrap</span>())
                        .<span class='ident'>unwrap</span>());
 
-        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>, <span class='ident'>decode_str</span>(<span class='string'>&quot;hello\u{FF}world&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='boolval'>true</span>,
+                   <span class='ident'>decode_str</span>(<span class='string'>&quot;hello\u{FF}world&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Strict</span>).<span class='ident'>is_err</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;helloworld&quot;</span>,
                    <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>decode_str</span>(<span class='string'>&quot;hello\u{FF}world&quot;</span>, <span class='ident'>ParseMode</span>::<span class='ident'>Robust</span>).<span class='ident'>unwrap</span>())
                        .<span class='ident'>unwrap</span>());
@@ -693,14 +760,25 @@
 
     <span class='attribute'>#[<span class='ident'>test</span>]</span>
     <span class='kw'>fn</span> <span class='ident'>test_encode</span>() {
-        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello, world!&quot;</span>, <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;hello, world!&quot;</span>.<span class='ident'>as_bytes</span>())).<span class='ident'>unwrap</span>());
-        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello,=0Cworld!&quot;</span>, <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;hello,\u{c}world!&quot;</span>.<span class='ident'>as_bytes</span>())).<span class='ident'>unwrap</span>());
-        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;this=00is=C3=BFa=3Dlong=0Dstring=0Athat gets wrapped and stuff, woohoo!=C3=\r\n=89&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;this\u{0}is\u{FF}a=long\rstring\nthat gets wrapped and stuff, woohoo!\u{c9}&quot;</span>.<span class='ident'>as_bytes</span>())).<span class='ident'>unwrap</span>());
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello, world!&quot;</span>,
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;hello, world!&quot;</span>.<span class='ident'>as_bytes</span>())).<span class='ident'>unwrap</span>());
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;hello,=0Cworld!&quot;</span>,
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;hello,\u{c}world!&quot;</span>.<span class='ident'>as_bytes</span>())).<span class='ident'>unwrap</span>());
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;this=00is=C3=BFa=3Dlong=0Dstring=0Athat gets wrapped and stuff, \
+                    woohoo!=C3=\r\n=89&quot;</span>,
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;this\u{0}is\u{FF}a=long\rstring\nthat gets \
+                                             wrapped and stuff, woohoo!\u{c9}&quot;</span>
+                           .<span class='ident'>as_bytes</span>()))
+                       .<span class='ident'>unwrap</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,   woohoo!=C3=89&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;this\u{0}is\u{FF}a=long\rstring\nthat just fits in a line,   woohoo!\u{c9}&quot;</span>.<span class='ident'>as_bytes</span>())).<span class='ident'>unwrap</span>());
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;this\u{0}is\u{FF}a=long\rstring\nthat just fits \
+                                             in a line,   woohoo!\u{c9}&quot;</span>
+                           .<span class='ident'>as_bytes</span>()))
+                       .<span class='ident'>unwrap</span>());
         <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='string'>&quot;this \r\nhas linebreaks\r\n built right in.&quot;</span>,
-                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;this \r\nhas linebreaks\r\n built right in.&quot;</span>.<span class='ident'>as_bytes</span>())).<span class='ident'>unwrap</span>());
+                   <span class='ident'>String</span>::<span class='ident'>from_utf8</span>(<span class='ident'>encode</span>(<span class='string'>&quot;this \r\nhas linebreaks\r\n built right in.&quot;</span>
+                           .<span class='ident'>as_bytes</span>()))
+                       .<span class='ident'>unwrap</span>());
     }
 }
 </pre>
