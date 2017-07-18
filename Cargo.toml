@@ -10,6 +10,7 @@ readme = "README.md"
 keywords = ["decode", "encode", "quoted", "printable"]
 categories = ["email", "parsing"]
 license = "0BSD"
+exclude = ["target/doc/**", ".gitattributes"]
 
 [badges]
 travis-ci = { repository = "staktrace/quoted-printable", branch = "master" }
