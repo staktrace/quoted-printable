@@ -8,6 +8,10 @@ homepage = "https://github.com/staktrace/quoted-printable/blob/master/README.md"
 repository = "https://github.com/staktrace/quoted-printable"
 readme = "README.md"
 keywords = ["decode", "encode", "quoted", "printable"]
-license-file = "LICENSE"
+categories = ["email", "parsing"]
+license = "0BSD"
+
+[badges]
+travis-ci = { repository = "staktrace/quoted-printable", branch = "master" }
 
 [dependencies]
