@@ -9,6 +9,7 @@
 
     <title>quoted_printable - Rust</title>
 
+    <link rel="stylesheet" type="text/css" href="../normalize.css">
     <link rel="stylesheet" type="text/css" href="../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../main.css">
     
@@ -16,7 +17,7 @@
     
     
 </head>
-<body class="rustdoc">
+<body class="rustdoc mod">
     <!--[if lte IE 8]>
     <div class="warning">
         This old browser is unsupported and will most likely display funky
@@ -28,7 +29,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'></p><script>window.sidebarCurrent = {name: 'quoted_printable', ty: 'mod', relpath: '../'};</script>
+        <p class='location'>Crate quoted_printable</p><div class="block items"><ul><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'quoted_printable', ty: 'mod', relpath: '../'};</script>
     </nav>
 
     <nav class="sub">
@@ -42,49 +43,49 @@
         </form>
     </nav>
 
-    <section id='main' class="content mod">
-<h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>quoted_printable</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content">
+<h1 class='fqn'><span class='in-band'>Crate <a class="mod" href=''>quoted_printable</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-0' class='srclink' href='../src/quoted_printable/src/lib.rs.html#1-369' title='goto source code'>[src]</a></span></h1>
+               </span><a class='srclink' href='../src/quoted_printable/lib.rs.html#1-405' title='goto source code'>[src]</a></span></h1>
 <h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
 <table>
                        <tr class=' module-item'>
-                           <td><a class='enum' href='enum.ParseMode.html'
-                                  title='quoted_printable::ParseMode'>ParseMode</a></td>
-                           <td class='docblock short'>
+                           <td><a class="enum" href="enum.ParseMode.html"
+                                  title='enum quoted_printable::ParseMode'>ParseMode</a></td>
+                           <td class='docblock-short'>
                                 <p>A flag that allows control over the decoding strictness.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
-                           <td><a class='enum' href='enum.QuotedPrintableError.html'
-                                  title='quoted_printable::QuotedPrintableError'>QuotedPrintableError</a></td>
-                           <td class='docblock short'>
+                           <td><a class="enum" href="enum.QuotedPrintableError.html"
+                                  title='enum quoted_printable::QuotedPrintableError'>QuotedPrintableError</a></td>
+                           <td class='docblock-short'>
                                 <p>An error type that represents different kinds of decoding errors.</p>
                            </td>
                        </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
 <table>
                        <tr class=' module-item'>
-                           <td><a class='fn' href='fn.decode.html'
-                                  title='quoted_printable::decode'>decode</a></td>
-                           <td class='docblock short'>
+                           <td><a class="fn" href="fn.decode.html"
+                                  title='fn quoted_printable::decode'>decode</a></td>
+                           <td class='docblock-short'>
                                 <p>Decodes a piece of quoted-printable data.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
-                           <td><a class='fn' href='fn.decode_str.html'
-                                  title='quoted_printable::decode_str'>decode_str</a></td>
-                           <td class='docblock short'>
+                           <td><a class="fn" href="fn.decode_str.html"
+                                  title='fn quoted_printable::decode_str'>decode_str</a></td>
+                           <td class='docblock-short'>
                                 <p>Decodes a piece of quoted-printable data. Refer to the documentation for
 decode; this is just a wrapper that calls that function on the utf-8 bytes
 from the provided string.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
-                           <td><a class='fn' href='fn.encode.html'
-                                  title='quoted_printable::encode'>encode</a></td>
-                           <td class='docblock short'>
+                           <td><a class="fn" href="fn.encode.html"
+                                  title='fn quoted_printable::encode'>encode</a></td>
+                           <td class='docblock-short'>
                                 <p>Encodes some bytes into quoted-printable format.</p>
                            </td>
                        </tr></table></section>
@@ -110,6 +111,8 @@ from the provided string.</p>
                     <dd>Move down in search results</dd>
                     <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
 
@@ -141,11 +144,8 @@ from the provided string.</p>
     <script>
         window.rootPath = "../";
         window.currentCrate = "quoted_printable";
-        window.playgroundUrl = "";
     </script>
-    <script src="../jquery.js"></script>
     <script src="../main.js"></script>
-    
     <script defer src="../search-index.js"></script>
 </body>
 </html>
