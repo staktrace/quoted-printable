@@ -24,6 +24,17 @@ In general you should probably use "robust" decoding, as it will gracefully hand
 
 The encode function obviously does the reverse, and converts a set of raw bytes into quoted-printable.
 
+
+Additionally there is following helper function:
+
+```rust
+    encode_to_str<R: AsRef<[u8]>>(input: R) -> String
+```
+
+which takes advantage of the fact that the `Vec<u8>` returned by `encode` can only
+contain valid us-ascii and converts it to a `String` (using the unsafe 
+`String::from_utf8_unchecked`)
+
 Documentation
 ---
 See the rustdoc at [http://staktrace.github.io/quoted-printable/target/doc/quoted_printable/](http://staktrace.github.io/quoted-printable/target/doc/quoted_printable/).
