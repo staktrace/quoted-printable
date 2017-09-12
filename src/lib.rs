@@ -245,45 +245,24 @@ fn _encode(input: &[u8]) -> Vec<u8> {
     let mut on_line: usize = 0;
     let mut backup_pos: usize = 0;
     let mut it = input.iter();
-    loop {
-        match it.next() {
-            Some(&b'=') => {
-                append(&mut result, b"=3D", &mut on_line, &mut backup_pos);
+
+    while let Some(&byte) = it.next() {
+        if byte != b'\r' {
+            encode_byte(&mut result, byte, &mut on_line, &mut backup_pos);
+        } else {
+            if let Some(&byte) = it.next() {
+                if byte == b'\n' {
+                    result.push(b'\r');
+                    result.push(b'\n');
+                    on_line = 0;
+                    continue
+                }
+                append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
+                encode_byte(&mut result, byte, &mut on_line, &mut backup_pos)
+            } else {
+                append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
             }
-            Some(v @ &b'\t') |
-            Some(v @ &b' '...b'~') => {
-                append(&mut result, &[*v], &mut on_line, &mut backup_pos);
-            }
-            Some(&b'\r') => {
-                match it.next() {
-                    Some(&b'\n') => {
-                        result.push(b'\r');
-                        result.push(b'\n');
-                        on_line = 0;
-                    }
-                    Some(&b'=') => {
-                        append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
-                        append(&mut result, b"=3D", &mut on_line, &mut backup_pos);
-                    }
-                    Some(v @ &b'\t') |
-                    Some(v @ &b' '...b'~') => {
-                        append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
-                        append(&mut result, &[*v], &mut on_line, &mut backup_pos);
-                    }
-                    Some(v) => {
-                        append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
-                        append(&mut result, &hex_encode_byte(*v), &mut on_line, &mut backup_pos);
-                    }
-                    None => {
-                        append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
-                    }
-                };
-            }
-            Some(v) => {
-                append(&mut result, &hex_encode_byte(*v), &mut on_line, &mut backup_pos);
-            }
-            None => break,
-        };
+        }
     }
 
     result
@@ -313,6 +292,17 @@ pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> String {
     let encoded_as_vec = encode(input);
     //SAFE: result can only contain us-ascii characters
     unsafe { String::from_utf8_unchecked(encoded_as_vec) }
+}
+
+#[inline]
+fn encode_byte(result: &mut Vec<u8>, to_append: u8, on_line: &mut usize, backup_pos: &mut usize) {
+    match to_append {
+        b'=' => append(result, b"=3D", on_line, backup_pos),
+        b'\t' | b' '...b'~' => {
+            append(result, &[to_append], on_line, backup_pos)
+        },
+        _ => append(result, &hex_encode_byte(to_append), on_line, backup_pos)
+    }
 }
 
 #[inline(always)]
