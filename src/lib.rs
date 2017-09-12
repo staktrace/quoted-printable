@@ -1,6 +1,13 @@
 use std::fmt;
 use std::error;
 
+static HEX_CHARS: &[u8] = &[
+    b'0', b'1', b'2', b'3', b'4',
+    b'5', b'6', b'7', b'8', b'9',
+    b'A', b'B', b'C', b'D', b'E',
+    b'F'
+];
+
 /// A flag that allows control over the decoding strictness.
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -265,7 +272,7 @@ fn _encode(input: &[u8]) -> Vec<u8> {
                     }
                     Some(v) => {
                         append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
-                        append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
+                        append(&mut result, &hex_encode_byte(*v), &mut on_line, &mut backup_pos);
                     }
                     None => {
                         append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
@@ -273,7 +280,7 @@ fn _encode(input: &[u8]) -> Vec<u8> {
                 };
             }
             Some(v) => {
-                append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
+                append(&mut result, &hex_encode_byte(*v), &mut on_line, &mut backup_pos);
             }
             None => break,
         };
@@ -306,6 +313,16 @@ pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> String {
     let encoded_as_vec = encode(input);
     //SAFE: result can only contain us-ascii characters
     unsafe { String::from_utf8_unchecked(encoded_as_vec) }
+}
+
+#[inline(always)]
+fn hex_encode_byte(byte: u8) -> [u8; 3] {
+    [b'=', lower_nibble_to_hex(byte>>4), lower_nibble_to_hex(byte)]
+}
+
+#[inline(always)]
+fn lower_nibble_to_hex( half_byte: u8 ) -> u8 {
+    HEX_CHARS[ (half_byte & 0x0F) as usize ]
 }
 
 #[cfg(test)]
@@ -414,5 +431,25 @@ mod tests {
                    encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
         assert_eq!("=0D=3D",
                    encode_to_str("\r="));
+    }
+
+    #[test]
+    fn test_lower_nibble_to_hex() {
+        let test_data: &[(u8,u8,u8)] = &[
+            (0, b'0', b'0' ),
+            (1, b'0', b'1' ),
+            (9, b'0', b'9'),
+            (10, b'0', b'A'),
+            (15, b'0', b'F'),
+            (16, b'1', b'0'),
+            (255, b'F', b'F')
+        ];
+
+        for &(nr, high, low) in test_data.iter() {
+            let got_high = lower_nibble_to_hex(nr >> 4);
+            assert_eq!(high, got_high);
+            let got_low = lower_nibble_to_hex(nr);
+            assert_eq!(low, got_low);
+        }
     }
 }
