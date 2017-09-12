@@ -1,6 +1,8 @@
 use std::fmt;
 use std::error;
 
+const LINE_LENGTH_LIMIT: usize = 76;
+
 static HEX_CHARS: &[u8] = &[
     b'0', b'1', b'2', b'3', b'4',
     b'5', b'6', b'7', b'8', b'9',
@@ -136,7 +138,7 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
             }
         };
 
-        if mode == ParseMode::Strict && bytes.len() > 76 {
+        if mode == ParseMode::Strict && bytes.len() > LINE_LENGTH_LIMIT {
             return Err(QuotedPrintableError::LineTooLong);
         }
 
@@ -201,8 +203,8 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
 }
 
 fn append(result: &mut Vec<u8>, to_append: &[u8], bytes_on_line: &mut usize, backup_pos: &mut usize) {
-    if *bytes_on_line + to_append.len() > 76 {
-        if *bytes_on_line == 76 {
+    if *bytes_on_line + to_append.len() > LINE_LENGTH_LIMIT {
+        if *bytes_on_line == LINE_LENGTH_LIMIT {
             // We're already at the max length, so inserting the '=' in the soft
             // line break would put us over. Instead, we insert the soft line
             // break at the backup pos, which is just before the last thing
