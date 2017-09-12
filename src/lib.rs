@@ -202,13 +202,25 @@ pub fn decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableE
     Ok(decoded)
 }
 
-fn append(result: &mut Vec<u8>, to_append: &[u8], bytes_on_line: &mut usize) {
+fn append(result: &mut Vec<u8>, to_append: &[u8], bytes_on_line: &mut usize, backup_pos: &mut usize) {
     if *bytes_on_line + to_append.len() > 76 {
-        result.extend([b'=', b'\r', b'\n'].iter().cloned());
-        *bytes_on_line = 0;
+        if *bytes_on_line == 76 {
+            // We're already at the max length, so inserting the '=' in the soft
+            // line break would put us over. Instead, we insert the soft line
+            // break at the backup pos, which is just before the last thing
+            // appended.
+            *bytes_on_line = result.len() - *backup_pos;
+            result.insert(*backup_pos, b'=');
+            result.insert(*backup_pos + 1, b'\r');
+            result.insert(*backup_pos + 2, b'\n');
+        } else {
+            result.extend([b'=', b'\r', b'\n'].iter().cloned());
+            *bytes_on_line = 0;
+        }
     }
     result.extend(to_append);
     *bytes_on_line = *bytes_on_line + to_append.len();
+    *backup_pos = result.len() - to_append.len();
 }
 
 /// Encodes some bytes into quoted-printable format.
@@ -228,15 +240,16 @@ fn append(result: &mut Vec<u8>, to_append: &[u8], bytes_on_line: &mut usize) {
 pub fn encode(input: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut on_line: usize = 0;
+    let mut backup_pos: usize = 0;
     let mut it = input.iter();
     loop {
         match it.next() {
             Some(v @ &b'=') => {
-                append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line);
+                append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
             }
             Some(v @ &b'\t') |
             Some(v @ &b' '...b'~') => {
-                append(&mut result, &[*v], &mut on_line);
+                append(&mut result, &[*v], &mut on_line, &mut backup_pos);
             }
             Some(&b'\r') => {
                 match it.next() {
@@ -246,24 +259,24 @@ pub fn encode(input: &[u8]) -> Vec<u8> {
                         on_line = 0;
                     }
                     Some(v @ &b'=') => {
-                        append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line);
+                        append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
                     }
                     Some(v @ &b'\t') |
                     Some(v @ &b' '...b'~') => {
-                        append(&mut result, "=0D".as_bytes(), &mut on_line);
-                        append(&mut result, &[*v], &mut on_line);
+                        append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
+                        append(&mut result, &[*v], &mut on_line, &mut backup_pos);
                     }
                     Some(v) => {
-                        append(&mut result, "=0D".as_bytes(), &mut on_line);
-                        append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line);
+                        append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
+                        append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
                     }
                     None => {
-                        append(&mut result, "=0D".as_bytes(), &mut on_line);
+                        append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
                     }
                 };
             }
             Some(v) => {
-                append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line);
+                append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
             }
             None => break,
         };
@@ -365,5 +378,28 @@ mod tests {
                    String::from_utf8(encode("this \r\nhas linebreaks\r\n built right in."
                            .as_bytes()))
                        .unwrap());
+        // Test that soft line breaks get inserted at the right place
+        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY".as_bytes()))
+                        .unwrap());
+        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXY",
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY".as_bytes()))
+                        .unwrap());
+        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXXY",
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY".as_bytes()))
+                        .unwrap());
+        // Test that soft line breaks don't break up an encoded octet
+        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=00Y",
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
+                        .unwrap());
+        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
+                        .unwrap());
+        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
+                        .unwrap());
+        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
+                        .unwrap());
     }
 }
