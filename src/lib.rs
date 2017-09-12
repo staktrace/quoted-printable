@@ -278,7 +278,34 @@ fn _encode(input: &[u8]) -> Vec<u8> {
             None => break,
         };
     }
+
     result
+}
+
+/// Encodes some bytes into quoted-printable format.
+///
+/// The difference to `encode` is that this function takes advantage of
+/// the fact that the `Vec<u8>` returned by `encode` can only contain
+/// valid us-ascii and converts it to a `String` (using the unsafe
+/// `String::from_utf8_unchecked`).
+///
+/// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
+/// 6.7. This function encodes a set of raw bytes into a format conformant with
+/// that spec. The output contains CRLF pairs as needed so that each line is
+/// wrapped to 76 characters or less (not including the CRLF).
+///
+/// # Examples
+///
+/// ```
+///     use quoted_printable::encode_to_str;
+///     let encoded = encode_to_str("hello, \u{20ac} zone!");
+///     assert_eq!("hello, =E2=82=AC zone!", encoded);
+/// ```
+#[inline(always)]
+pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> String {
+    let encoded_as_vec = encode(input);
+    //SAFE: result can only contain us-ascii characters
+    unsafe { String::from_utf8_unchecked(encoded_as_vec) }
 }
 
 #[cfg(test)]
@@ -357,45 +384,35 @@ mod tests {
     #[test]
     fn test_encode() {
         assert_eq!("hello, world!",
-                   String::from_utf8(encode("hello, world!".as_bytes())).unwrap());
+                   encode_to_str("hello, world!".as_bytes()));
         assert_eq!("hello,=0Cworld!",
-                   String::from_utf8(encode("hello,\u{c}world!".as_bytes())).unwrap());
+                   encode_to_str("hello,\u{c}world!".as_bytes()));
         assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat gets wrapped and stuff, \
                     woohoo!=C3=\r\n=89",
-                   String::from_utf8(encode("this\u{0}is\u{FF}a=long\rstring\nthat gets \
-                                             wrapped and stuff, woohoo!\u{c9}"))
-                       .unwrap());
+                   encode_to_str("this\u{0}is\u{FF}a=long\rstring\nthat gets \
+                                             wrapped and stuff, woohoo!\u{c9}"));
         assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,   woohoo!=C3=89",
-                   String::from_utf8(encode("this\u{0}is\u{FF}a=long\rstring\nthat just fits \
-                                             in a line,   woohoo!\u{c9}"))
-                       .unwrap());
+                   encode_to_str("this\u{0}is\u{FF}a=long\rstring\nthat just fits \
+                                             in a line,   woohoo!\u{c9}"));
         assert_eq!("this \r\nhas linebreaks\r\n built right in.",
-                   String::from_utf8(encode("this \r\nhas linebreaks\r\n built right in."))
-                       .unwrap());
+                   encode_to_str("this \r\nhas linebreaks\r\n built right in."));
         // Test that soft line breaks get inserted at the right place
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"))
-                        .unwrap());
+                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"));
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXY",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"))
-                        .unwrap());
+                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"));
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXXY",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"))
-                        .unwrap());
+                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"));
         // Test that soft line breaks don't break up an encoded octet
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=00Y",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"))
-                        .unwrap());
+                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"))
-                        .unwrap());
+                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"))
-                        .unwrap());
+                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"))
-                        .unwrap());
+                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
         assert_eq!("=0D=3D",
-                   String::from_utf8(encode("\r=")).unwrap());
+                   encode_to_str("\r="));
     }
 }
