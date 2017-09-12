@@ -259,6 +259,7 @@ pub fn encode(input: &[u8]) -> Vec<u8> {
                         on_line = 0;
                     }
                     Some(v @ &b'=') => {
+                        append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
                         append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
                     }
                     Some(v @ &b'\t') |
@@ -401,5 +402,7 @@ mod tests {
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
                    String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
                         .unwrap());
+        assert_eq!("=0D=3D",
+                   String::from_utf8(encode("\r=".as_bytes())).unwrap());
     }
 }
