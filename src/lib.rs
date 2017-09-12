@@ -255,20 +255,20 @@ fn _encode(input: &[u8]) -> Vec<u8> {
                         on_line = 0;
                     }
                     Some(&b'=') => {
-                        append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
+                        append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
                         append(&mut result, b"=3D", &mut on_line, &mut backup_pos);
                     }
                     Some(v @ &b'\t') |
                     Some(v @ &b' '...b'~') => {
-                        append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
+                        append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
                         append(&mut result, &[*v], &mut on_line, &mut backup_pos);
                     }
                     Some(v) => {
-                        append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
+                        append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
                         append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
                     }
                     None => {
-                        append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
+                        append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
                     }
                 };
             }
