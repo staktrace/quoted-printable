@@ -240,8 +240,8 @@ fn _encode(input: &[u8]) -> Vec<u8> {
     let mut it = input.iter();
     loop {
         match it.next() {
-            Some(v @ &b'=') => {
-                append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
+            Some(&b'=') => {
+                append(&mut result, b"=3D", &mut on_line, &mut backup_pos);
             }
             Some(v @ &b'\t') |
             Some(v @ &b' '...b'~') => {
@@ -254,9 +254,9 @@ fn _encode(input: &[u8]) -> Vec<u8> {
                         result.push(b'\n');
                         on_line = 0;
                     }
-                    Some(v @ &b'=') => {
+                    Some(&b'=') => {
                         append(&mut result, "=0D".as_bytes(), &mut on_line, &mut backup_pos);
-                        append(&mut result, format!("={:02X}", *v).as_bytes(), &mut on_line, &mut backup_pos);
+                        append(&mut result, b"=3D", &mut on_line, &mut backup_pos);
                     }
                     Some(v @ &b'\t') |
                     Some(v @ &b' '...b'~') => {
