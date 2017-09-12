@@ -1,6 +1,6 @@
 [package]
 name = "quoted_printable"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["Kartikaya Gupta <kats@seldon.staktrace.com>"]
 description = "A simple encoder/decoder for quoted-printable data"
 documentation = "https://staktrace.github.io/quoted-printable/target/doc/quoted_printable/"
