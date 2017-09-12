@@ -72,20 +72,6 @@ impl error::Error for QuotedPrintableError {
     }
 }
 
-/// Decodes a piece of quoted-printable data. Refer to the documentation for
-/// decode; this is just a wrapper that calls that function on the utf-8 bytes
-/// from the provided string.
-///
-/// # Examples
-///
-/// ```
-///     use quoted_printable::{decode_str, ParseMode};
-///     let decoded = decode_str("hello=3Dworld=0D=0A", ParseMode::Robust).unwrap();
-///     assert_eq!("hello=world\r\n", String::from_utf8(decoded).unwrap());
-/// ```
-pub fn decode_str(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
-    decode(input.as_bytes(), mode)
-}
 
 /// Decodes a piece of quoted-printable data.
 ///
@@ -114,7 +100,12 @@ pub fn decode_str(input: &str, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintab
 /// to IETF RFC 2045, section 6.7 for details on what constitutes valid and
 /// invalid input, and what a "robust" implementation would do in the face of
 /// invalid input.
-pub fn decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
+#[inline(always)]
+pub fn decode<R: AsRef<[u8]>>(input: R, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
+    _decode(input.as_ref(), mode)
+}
+
+fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
     let filtered = input.into_iter()
         .filter_map(|&c| match c {
             b'\t' | b'\r' | b'\n' | b' '...b'~' => Some(c as char),
@@ -234,10 +225,15 @@ fn append(result: &mut Vec<u8>, to_append: &[u8], bytes_on_line: &mut usize, bac
 ///
 /// ```
 ///     use quoted_printable::encode;
-///     let encoded = encode("hello, \u{20ac} zone!".as_bytes());
+///     let encoded = encode("hello, \u{20ac} zone!");
 ///     assert_eq!("hello, =E2=82=AC zone!", String::from_utf8(encoded).unwrap());
 /// ```
-pub fn encode(input: &[u8]) -> Vec<u8> {
+#[inline(always)]
+pub fn encode<R: AsRef<[u8]>>(input: R) -> Vec<u8> {
+    _encode(input.as_ref())
+}
+
+fn _encode(input: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut on_line: usize = 0;
     let mut backup_pos: usize = 0;
@@ -292,70 +288,70 @@ mod tests {
     #[test]
     fn test_decode() {
         assert_eq!("hello world",
-                   String::from_utf8(decode_str("hello world", ParseMode::Strict).unwrap())
+                   String::from_utf8(decode("hello world", ParseMode::Strict).unwrap())
                        .unwrap());
         assert_eq!("Now's the time for all folk to come to the aid of their country.",
-                   String::from_utf8(decode_str("Now's the time =\r\nfor all folk to come=\r\n \
+                   String::from_utf8(decode("Now's the time =\r\nfor all folk to come=\r\n \
                                                  to the aid of their country.",
                                                 ParseMode::Strict)
                            .unwrap())
                        .unwrap());
         assert_eq!("\r\nhello=world",
-                   String::from_utf8(decode_str("=0D=0Ahello=3Dworld", ParseMode::Strict)
+                   String::from_utf8(decode("=0D=0Ahello=3Dworld", ParseMode::Strict)
                            .unwrap())
                        .unwrap());
         assert_eq!("hello world\r\ngoodbye world",
-                   String::from_utf8(decode_str("hello world\r\ngoodbye world",
+                   String::from_utf8(decode("hello world\r\ngoodbye world",
                                                 ParseMode::Strict)
                            .unwrap())
                        .unwrap());
         assert_eq!("hello world\r\ngoodbye world",
-                   String::from_utf8(decode_str("hello world   \r\ngoodbye world   ",
+                   String::from_utf8(decode("hello world   \r\ngoodbye world   ",
                                                 ParseMode::Strict)
                            .unwrap())
                        .unwrap());
         assert_eq!("hello world\r\ngoodbye world x",
-                   String::from_utf8(decode_str("hello world   \r\ngoodbye world =  \r\nx",
+                   String::from_utf8(decode("hello world   \r\ngoodbye world =  \r\nx",
                                                 ParseMode::Strict)
                            .unwrap())
                        .unwrap());
 
         assert_eq!(true,
-                   decode_str("hello world=x", ParseMode::Strict).is_err());
+                   decode("hello world=x", ParseMode::Strict).is_err());
         assert_eq!("hello world=x",
-                   String::from_utf8(decode_str("hello world=x", ParseMode::Robust).unwrap())
+                   String::from_utf8(decode("hello world=x", ParseMode::Robust).unwrap())
                        .unwrap());
 
         assert_eq!(true,
-                   decode_str("hello =world=", ParseMode::Strict).is_err());
+                   decode("hello =world=", ParseMode::Strict).is_err());
         assert_eq!("hello =world",
-                   String::from_utf8(decode_str("hello =world=", ParseMode::Robust).unwrap())
+                   String::from_utf8(decode("hello =world=", ParseMode::Robust).unwrap())
                        .unwrap());
 
         assert_eq!(true,
-                   decode_str("hello world=3d", ParseMode::Strict).is_err());
+                   decode("hello world=3d", ParseMode::Strict).is_err());
         assert_eq!("hello world=",
-                   String::from_utf8(decode_str("hello world=3d", ParseMode::Robust).unwrap())
+                   String::from_utf8(decode("hello world=3d", ParseMode::Robust).unwrap())
                        .unwrap());
 
         assert_eq!(true,
-                   decode_str("hello world=3m", ParseMode::Strict).is_err());
+                   decode("hello world=3m", ParseMode::Strict).is_err());
         assert_eq!("hello world=3m",
-                   String::from_utf8(decode_str("hello world=3m", ParseMode::Robust).unwrap())
+                   String::from_utf8(decode("hello world=3m", ParseMode::Robust).unwrap())
                        .unwrap());
 
         assert_eq!(true,
-                   decode_str("hello\u{FF}world", ParseMode::Strict).is_err());
+                   decode("hello\u{FF}world", ParseMode::Strict).is_err());
         assert_eq!("helloworld",
-                   String::from_utf8(decode_str("hello\u{FF}world", ParseMode::Robust).unwrap())
+                   String::from_utf8(decode("hello\u{FF}world", ParseMode::Robust).unwrap())
                        .unwrap());
 
         assert_eq!(true,
-                   decode_str("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Strict).is_err());
+                   decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Strict).is_err());
         assert_eq!("12345678901234567890123456789012345678901234567890123456789012345678901234567",
-                   String::from_utf8(decode_str("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Robust).unwrap()).unwrap());
+                   String::from_utf8(decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Robust).unwrap()).unwrap());
         assert_eq!("1234567890123456789012345678901234567890123456789012345678901234567890123456",
-                   String::from_utf8(decode_str("1234567890123456789012345678901234567890123456789012345678901234567890123456", ParseMode::Strict).unwrap()).unwrap());
+                   String::from_utf8(decode("1234567890123456789012345678901234567890123456789012345678901234567890123456", ParseMode::Strict).unwrap()).unwrap());
     }
 
     #[test]
@@ -367,42 +363,39 @@ mod tests {
         assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat gets wrapped and stuff, \
                     woohoo!=C3=\r\n=89",
                    String::from_utf8(encode("this\u{0}is\u{FF}a=long\rstring\nthat gets \
-                                             wrapped and stuff, woohoo!\u{c9}"
-                           .as_bytes()))
+                                             wrapped and stuff, woohoo!\u{c9}"))
                        .unwrap());
         assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,   woohoo!=C3=89",
                    String::from_utf8(encode("this\u{0}is\u{FF}a=long\rstring\nthat just fits \
-                                             in a line,   woohoo!\u{c9}"
-                           .as_bytes()))
+                                             in a line,   woohoo!\u{c9}"))
                        .unwrap());
         assert_eq!("this \r\nhas linebreaks\r\n built right in.",
-                   String::from_utf8(encode("this \r\nhas linebreaks\r\n built right in."
-                           .as_bytes()))
+                   String::from_utf8(encode("this \r\nhas linebreaks\r\n built right in."))
                        .unwrap());
         // Test that soft line breaks get inserted at the right place
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY".as_bytes()))
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"))
                         .unwrap());
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXY",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY".as_bytes()))
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"))
                         .unwrap());
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXXY",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY".as_bytes()))
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"))
                         .unwrap());
         // Test that soft line breaks don't break up an encoded octet
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=00Y",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"))
                         .unwrap());
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"))
                         .unwrap());
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"))
                         .unwrap());
         assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y".as_bytes()))
+                   String::from_utf8(encode("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"))
                         .unwrap());
         assert_eq!("=0D=3D",
-                   String::from_utf8(encode("\r=".as_bytes())).unwrap());
+                   String::from_utf8(encode("\r=")).unwrap());
     }
 }

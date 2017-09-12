@@ -10,15 +10,13 @@ API
 quoted-printable exposes two functions at the moment:
 
 ```rust
-    decode(&[u8], ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
-    encode(&[u8]) -> Vec<u8>
+    decode<R: AsRef<[u8]>>(input: R, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
+    encode<R: AsRef<[u8]>>(input: R) -> Vec<u8>
 ```
 
-as well as an extra helper:
+using `R: AsRef<[u8]>` means that you can pass in a variety of types, including:
+`String`, `&String`, `&str`, `Vec<u8>`, `&Vec<u8>`, `&[u8]`, `Box<[u8]>`, `Arc<[u8]>`
 
-```rust
-    decode_str(&str, ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
-```
 
 The decode function can be used to convert a quoted-printable string into the decoded bytes, as per the description in [IETF RFC 2045, section 6.7](https://tools.ietf.org/html/rfc2045#section-6.7).
 The ParseMode option can be used to control whether the decoding is "strict" or "robust", as per the comments in that RFC.
