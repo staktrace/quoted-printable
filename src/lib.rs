@@ -1,6 +1,8 @@
 use std::fmt;
 use std::error;
 
+const LINE_LENGTH_LIMIT: usize = 76;
+
 /// A flag that allows control over the decoding strictness.
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -138,7 +140,7 @@ pub fn decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableE
             }
         };
 
-        if mode == ParseMode::Strict && bytes.len() > 76 {
+        if mode == ParseMode::Strict && bytes.len() > LINE_LENGTH_LIMIT {
             return Err(QuotedPrintableError::LineTooLong);
         }
 
@@ -203,7 +205,10 @@ pub fn decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableE
 }
 
 fn append(result: &mut Vec<u8>, to_append: &[u8], bytes_on_line: &mut usize) {
-    if *bytes_on_line + to_append.len() > 76 {
+    // as we have to add one character (`=`) to add a soft wrap
+    // we can add at most LINE_LENGTH_LIMIT-1 character befor doing
+    // the soft wrap
+    if *bytes_on_line + to_append.len() > LINE_LENGTH_LIMIT-1 {
         result.extend([b'=', b'\r', b'\n'].iter().cloned());
         *bytes_on_line = 0;
     }
@@ -356,14 +361,26 @@ mod tests {
                                              wrapped and stuff, woohoo!\u{c9}"
                            .as_bytes()))
                        .unwrap());
-        assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,   woohoo!=C3=89",
-                   String::from_utf8(encode("this\u{0}is\u{FF}a=long\rstring\nthat just fits \
-                                             in a line,   woohoo!\u{c9}"
-                           .as_bytes()))
-                       .unwrap());
         assert_eq!("this \r\nhas linebreaks\r\n built right in.",
                    String::from_utf8(encode("this \r\nhas linebreaks\r\n built right in."
                            .as_bytes()))
                        .unwrap());
+    }
+
+    #[test]
+    fn test_wrap_line() {
+        assert_eq!(
+            b"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n-Y"
+                .to_vec(),
+            encode(b"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-Y")
+        );
+    }
+
+    #[test]
+    fn test_no_wrap() {
+        assert_eq!(
+            b"this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,  woohoo!=C3=89".to_vec(),
+            encode("this\u{0}is\u{FF}a=long\rstring\nthat just fits in a line,  woohoo!\u{c9}"
+                .as_bytes()))
     }
 }
