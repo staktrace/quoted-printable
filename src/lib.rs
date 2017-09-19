@@ -4,10 +4,22 @@ use std::error;
 const LINE_LENGTH_LIMIT: usize = 76;
 
 static HEX_CHARS: &[u8] = &[
-    b'0', b'1', b'2', b'3', b'4',
-    b'5', b'6', b'7', b'8', b'9',
-    b'A', b'B', b'C', b'D', b'E',
-    b'F'
+    b'0',
+    b'1',
+    b'2',
+    b'3',
+    b'4',
+    b'5',
+    b'6',
+    b'7',
+    b'8',
+    b'9',
+    b'A',
+    b'B',
+    b'C',
+    b'D',
+    b'E',
+    b'F',
 ];
 
 /// A flag that allows control over the decoding strictness.
@@ -49,20 +61,28 @@ impl fmt::Display for QuotedPrintableError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             QuotedPrintableError::InvalidByte => {
-                write!(f,
-                       "A unallowed byte was found in the quoted-printable input")
+                write!(
+                    f,
+                    "A unallowed byte was found in the quoted-printable input"
+                )
             }
             QuotedPrintableError::LineTooLong => {
-                write!(f,
-                       "A line length in the quoted-printed input exceeded 76 bytes")
+                write!(
+                    f,
+                    "A line length in the quoted-printed input exceeded 76 bytes"
+                )
             }
             QuotedPrintableError::IncompleteHexOctet => {
-                write!(f,
-                       "A '=' followed by only one character was found in the input")
+                write!(
+                    f,
+                    "A '=' followed by only one character was found in the input"
+                )
             }
             QuotedPrintableError::InvalidHexOctet => {
-                write!(f,
-                       "A '=' followed by non-hex characters was found in the input")
+                write!(
+                    f,
+                    "A '=' followed by non-hex characters was found in the input"
+                )
             }
             QuotedPrintableError::LowercaseHexOctet => {
                 write!(f, "A '=' was followed by lowercase hex characters")
@@ -115,7 +135,8 @@ pub fn decode<R: AsRef<[u8]>>(input: R, mode: ParseMode) -> Result<Vec<u8>, Quot
 }
 
 fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
-    let filtered = input.into_iter()
+    let filtered = input
+        .into_iter()
         .filter_map(|&c| match c {
             b'\t' | b'\r' | b'\n' | b' '...b'~' => Some(c as char),
             _ => None,
@@ -179,12 +200,13 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
                 if upper_char.is_digit(16) && lower_char.is_digit(16) {
                     if mode == ParseMode::Strict {
                         if upper_char.to_uppercase().next() != Some(upper_char) ||
-                           lower_char.to_uppercase().next() != Some(lower_char) {
+                            lower_char.to_uppercase().next() != Some(lower_char)
+                        {
                             return Err(QuotedPrintableError::LowercaseHexOctet);
                         }
                     }
                     let combined = upper_char.to_digit(16).unwrap() << 4 |
-                                   lower_char.to_digit(16).unwrap();
+                        lower_char.to_digit(16).unwrap();
                     decoded.push(combined as u8);
                 } else {
                     if mode == ParseMode::Strict {
@@ -202,7 +224,12 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
     Ok(decoded)
 }
 
-fn append(result: &mut Vec<u8>, to_append: &[u8], bytes_on_line: &mut usize, backup_pos: &mut usize) {
+fn append(
+    result: &mut Vec<u8>,
+    to_append: &[u8],
+    bytes_on_line: &mut usize,
+    backup_pos: &mut usize,
+) {
     if *bytes_on_line + to_append.len() > LINE_LENGTH_LIMIT {
         if *bytes_on_line == LINE_LENGTH_LIMIT {
             // We're already at the max length, so inserting the '=' in the soft
@@ -257,10 +284,10 @@ fn _encode(input: &[u8]) -> Vec<u8> {
                     result.push(b'\r');
                     result.push(b'\n');
                     on_line = 0;
-                    continue
+                    continue;
                 }
                 append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
-                encode_byte(&mut result, byte, &mut on_line, &mut backup_pos)
+                encode_byte(&mut result, byte, &mut on_line, &mut backup_pos);
             } else {
                 append(&mut result, b"=0D", &mut on_line, &mut backup_pos);
             }
@@ -300,21 +327,23 @@ pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> String {
 fn encode_byte(result: &mut Vec<u8>, to_append: u8, on_line: &mut usize, backup_pos: &mut usize) {
     match to_append {
         b'=' => append(result, b"=3D", on_line, backup_pos),
-        b'\t' | b' '...b'~' => {
-            append(result, &[to_append], on_line, backup_pos)
-        },
-        _ => append(result, &hex_encode_byte(to_append), on_line, backup_pos)
+        b'\t' | b' '...b'~' => append(result, &[to_append], on_line, backup_pos),
+        _ => append(result, &hex_encode_byte(to_append), on_line, backup_pos),
     }
 }
 
 #[inline(always)]
 fn hex_encode_byte(byte: u8) -> [u8; 3] {
-    [b'=', lower_nibble_to_hex(byte>>4), lower_nibble_to_hex(byte)]
+    [
+        b'=',
+        lower_nibble_to_hex(byte >> 4),
+        lower_nibble_to_hex(byte),
+    ]
 }
 
 #[inline(always)]
-fn lower_nibble_to_hex( half_byte: u8 ) -> u8 {
-    HEX_CHARS[ (half_byte & 0x0F) as usize ]
+fn lower_nibble_to_hex(half_byte: u8) -> u8 {
+    HEX_CHARS[(half_byte & 0x0F) as usize]
 }
 
 #[cfg(test)]
@@ -323,118 +352,186 @@ mod tests {
 
     #[test]
     fn test_decode() {
-        assert_eq!("hello world",
-                   String::from_utf8(decode("hello world", ParseMode::Strict).unwrap())
-                       .unwrap());
-        assert_eq!("Now's the time for all folk to come to the aid of their country.",
-                   String::from_utf8(decode("Now's the time =\r\nfor all folk to come=\r\n \
+        assert_eq!(
+            "hello world",
+            String::from_utf8(decode("hello world", ParseMode::Strict).unwrap()).unwrap()
+        );
+        assert_eq!(
+            "Now's the time for all folk to come to the aid of their country.",
+            String::from_utf8(
+                decode(
+                    "Now's the time =\r\nfor all folk to come=\r\n \
                                                  to the aid of their country.",
-                                                ParseMode::Strict)
-                           .unwrap())
-                       .unwrap());
-        assert_eq!("\r\nhello=world",
-                   String::from_utf8(decode("=0D=0Ahello=3Dworld", ParseMode::Strict)
-                           .unwrap())
-                       .unwrap());
-        assert_eq!("hello world\r\ngoodbye world",
-                   String::from_utf8(decode("hello world\r\ngoodbye world",
-                                                ParseMode::Strict)
-                           .unwrap())
-                       .unwrap());
-        assert_eq!("hello world\r\ngoodbye world",
-                   String::from_utf8(decode("hello world   \r\ngoodbye world   ",
-                                                ParseMode::Strict)
-                           .unwrap())
-                       .unwrap());
-        assert_eq!("hello world\r\ngoodbye world x",
-                   String::from_utf8(decode("hello world   \r\ngoodbye world =  \r\nx",
-                                                ParseMode::Strict)
-                           .unwrap())
-                       .unwrap());
+                    ParseMode::Strict,
+                ).unwrap(),
+            ).unwrap()
+        );
+        assert_eq!(
+            "\r\nhello=world",
+            String::from_utf8(decode("=0D=0Ahello=3Dworld", ParseMode::Strict).unwrap()).unwrap()
+        );
+        assert_eq!(
+            "hello world\r\ngoodbye world",
+            String::from_utf8(
+                decode("hello world\r\ngoodbye world", ParseMode::Strict).unwrap(),
+            ).unwrap()
+        );
+        assert_eq!(
+            "hello world\r\ngoodbye world",
+            String::from_utf8(
+                decode("hello world   \r\ngoodbye world   ", ParseMode::Strict).unwrap(),
+            ).unwrap()
+        );
+        assert_eq!(
+            "hello world\r\ngoodbye world x",
+            String::from_utf8(
+                decode(
+                    "hello world   \r\ngoodbye world =  \r\nx",
+                    ParseMode::Strict,
+                ).unwrap(),
+            ).unwrap()
+        );
 
-        assert_eq!(true,
-                   decode("hello world=x", ParseMode::Strict).is_err());
-        assert_eq!("hello world=x",
-                   String::from_utf8(decode("hello world=x", ParseMode::Robust).unwrap())
-                       .unwrap());
+        assert_eq!(true, decode("hello world=x", ParseMode::Strict).is_err());
+        assert_eq!(
+            "hello world=x",
+            String::from_utf8(decode("hello world=x", ParseMode::Robust).unwrap()).unwrap()
+        );
 
-        assert_eq!(true,
-                   decode("hello =world=", ParseMode::Strict).is_err());
-        assert_eq!("hello =world",
-                   String::from_utf8(decode("hello =world=", ParseMode::Robust).unwrap())
-                       .unwrap());
+        assert_eq!(true, decode("hello =world=", ParseMode::Strict).is_err());
+        assert_eq!(
+            "hello =world",
+            String::from_utf8(decode("hello =world=", ParseMode::Robust).unwrap()).unwrap()
+        );
 
-        assert_eq!(true,
-                   decode("hello world=3d", ParseMode::Strict).is_err());
-        assert_eq!("hello world=",
-                   String::from_utf8(decode("hello world=3d", ParseMode::Robust).unwrap())
-                       .unwrap());
+        assert_eq!(true, decode("hello world=3d", ParseMode::Strict).is_err());
+        assert_eq!(
+            "hello world=",
+            String::from_utf8(decode("hello world=3d", ParseMode::Robust).unwrap()).unwrap()
+        );
 
-        assert_eq!(true,
-                   decode("hello world=3m", ParseMode::Strict).is_err());
-        assert_eq!("hello world=3m",
-                   String::from_utf8(decode("hello world=3m", ParseMode::Robust).unwrap())
-                       .unwrap());
+        assert_eq!(true, decode("hello world=3m", ParseMode::Strict).is_err());
+        assert_eq!(
+            "hello world=3m",
+            String::from_utf8(decode("hello world=3m", ParseMode::Robust).unwrap()).unwrap()
+        );
 
-        assert_eq!(true,
-                   decode("hello\u{FF}world", ParseMode::Strict).is_err());
-        assert_eq!("helloworld",
-                   String::from_utf8(decode("hello\u{FF}world", ParseMode::Robust).unwrap())
-                       .unwrap());
+        assert_eq!(true, decode("hello\u{FF}world", ParseMode::Strict).is_err());
+        assert_eq!(
+            "helloworld",
+            String::from_utf8(decode("hello\u{FF}world", ParseMode::Robust).unwrap()).unwrap()
+        );
 
-        assert_eq!(true,
-                   decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Strict).is_err());
-        assert_eq!("12345678901234567890123456789012345678901234567890123456789012345678901234567",
-                   String::from_utf8(decode("12345678901234567890123456789012345678901234567890123456789012345678901234567", ParseMode::Robust).unwrap()).unwrap());
-        assert_eq!("1234567890123456789012345678901234567890123456789012345678901234567890123456",
-                   String::from_utf8(decode("1234567890123456789012345678901234567890123456789012345678901234567890123456", ParseMode::Strict).unwrap()).unwrap());
+        assert_eq!(
+            true,
+            decode(
+                "12345678901234567890123456789012345678901234567890123456789012345678901234567",
+                ParseMode::Strict,
+            ).is_err()
+        );
+        assert_eq!(
+            "12345678901234567890123456789012345678901234567890123456789012345678901234567",
+            String::from_utf8(
+                decode(
+                    "12345678901234567890123456789012345678901234567890123456789012345678901234567",
+                    ParseMode::Robust,
+                ).unwrap(),
+            ).unwrap()
+        );
+        assert_eq!(
+            "1234567890123456789012345678901234567890123456789012345678901234567890123456",
+            String::from_utf8(
+                decode(
+                    "1234567890123456789012345678901234567890123456789012345678901234567890123456",
+                    ParseMode::Strict,
+                ).unwrap(),
+            ).unwrap()
+        );
     }
 
     #[test]
     fn test_encode() {
-        assert_eq!("hello, world!",
-                   encode_to_str("hello, world!".as_bytes()));
-        assert_eq!("hello,=0Cworld!",
-                   encode_to_str("hello,\u{c}world!".as_bytes()));
-        assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat gets wrapped and stuff, \
+        assert_eq!("hello, world!", encode_to_str("hello, world!".as_bytes()));
+        assert_eq!(
+            "hello,=0Cworld!",
+            encode_to_str("hello,\u{c}world!".as_bytes())
+        );
+        assert_eq!(
+            "this=00is=C3=BFa=3Dlong=0Dstring=0Athat gets wrapped and stuff, \
                     woohoo!=C3=\r\n=89",
-                   encode_to_str("this\u{0}is\u{FF}a=long\rstring\nthat gets \
-                                             wrapped and stuff, woohoo!\u{c9}"));
-        assert_eq!("this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,   woohoo!=C3=89",
-                   encode_to_str("this\u{0}is\u{FF}a=long\rstring\nthat just fits \
-                                             in a line,   woohoo!\u{c9}"));
-        assert_eq!("this \r\nhas linebreaks\r\n built right in.",
-                   encode_to_str("this \r\nhas linebreaks\r\n built right in."));
+            encode_to_str(
+                "this\u{0}is\u{FF}a=long\rstring\nthat gets \
+                                             wrapped and stuff, woohoo!\u{c9}",
+            )
+        );
+        assert_eq!(
+            "this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,   woohoo!=C3=89",
+            encode_to_str(
+                "this\u{0}is\u{FF}a=long\rstring\nthat just fits \
+                                             in a line,   woohoo!\u{c9}",
+            )
+        );
+        assert_eq!(
+            "this \r\nhas linebreaks\r\n built right in.",
+            encode_to_str("this \r\nhas linebreaks\r\n built right in.")
+        );
         // Test that soft line breaks get inserted at the right place
-        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
-                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"));
-        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXY",
-                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"));
-        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXXY",
-                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"));
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
+            encode_to_str(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
+            )
+        );
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXY",
+            encode_to_str(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
+            )
+        );
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\nXXY",
+            encode_to_str(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
+            )
+        );
         // Test that soft line breaks don't break up an encoded octet
-        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=00Y",
-                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
-        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
-        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
-        assert_eq!("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
-                   encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y"));
-        assert_eq!("=0D=3D",
-                   encode_to_str("\r="));
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=00Y",
+            encode_to_str(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y",
+            )
+        );
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
+            encode_to_str(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y",
+            )
+        );
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
+            encode_to_str(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y",
+            )
+        );
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=00Y",
+            encode_to_str(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y",
+            )
+        );
+        assert_eq!("=0D=3D", encode_to_str("\r="));
     }
 
     #[test]
     fn test_lower_nibble_to_hex() {
-        let test_data: &[(u8,u8,u8)] = &[
-            (0, b'0', b'0' ),
-            (1, b'0', b'1' ),
+        let test_data: &[(u8, u8, u8)] = &[
+            (0, b'0', b'0'),
+            (1, b'0', b'1'),
             (9, b'0', b'9'),
             (10, b'0', b'A'),
             (15, b'0', b'F'),
             (16, b'1', b'0'),
-            (255, b'F', b'F')
+            (255, b'F', b'F'),
         ];
 
         for &(nr, high, low) in test_data.iter() {

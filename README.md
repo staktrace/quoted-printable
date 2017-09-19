@@ -32,7 +32,7 @@ Additionally there is following helper function:
 ```
 
 which takes advantage of the fact that the `Vec<u8>` returned by `encode` can only
-contain valid us-ascii and converts it to a `String` (using the unsafe 
+contain valid us-ascii and converts it to a `String` (using the unsafe
 `String::from_utf8_unchecked`)
 
 Documentation
