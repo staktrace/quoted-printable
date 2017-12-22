@@ -14,5 +14,6 @@ exclude = ["target/doc/**", ".gitattributes"]
 
 [badges]
 travis-ci = { repository = "staktrace/quoted-printable", branch = "master" }
+maintenance = { status = "passively-maintained" }
 
 [dependencies]
