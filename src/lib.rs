@@ -150,7 +150,7 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
     let mut add_line_break = None;
     loop {
         let mut bytes = match lines.next() {
-            Some(v) => v.trim_right().bytes(),
+            Some(v) => v.trim_end().bytes(),
             None => {
                 if mode == ParseMode::Strict && add_line_break == Some(false) {
                     return Err(QuotedPrintableError::IncompleteHexOctet);
