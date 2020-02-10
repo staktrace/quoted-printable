@@ -37,8 +37,4 @@ contain valid us-ascii and converts it to a `String` (using the unsafe
 
 Documentation
 ---
-See the rustdoc at [http://staktrace.github.io/quoted-printable/target/doc/quoted_printable/](http://staktrace.github.io/quoted-printable/target/doc/quoted_printable/).
-
-Other notes
----
-This is written by a newbie Rust programmer, so code may be non-idiomatic or suboptimal. Pull requests are welcome!
+See document on [https://docs.rs](https://docs.rs/quoted_printable/).

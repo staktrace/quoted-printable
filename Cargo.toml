@@ -4,14 +4,12 @@ version = "0.4.1"
 authors = ["Kartikaya Gupta <kats@seldon.staktrace.com>"]
 edition = "2018"
 description = "A simple encoder/decoder for quoted-printable data"
-documentation = "https://staktrace.github.io/quoted-printable/target/doc/quoted_printable/"
 homepage = "https://github.com/staktrace/quoted-printable/blob/master/README.md"
 repository = "https://github.com/staktrace/quoted-printable"
 readme = "README.md"
 keywords = ["decode", "encode", "quoted", "printable"]
 categories = ["email", "parsing"]
 license = "0BSD"
-exclude = ["target/doc/**", ".gitattributes"]
 
 [badges]
 travis-ci = { repository = "staktrace/quoted-printable", branch = "master" }
