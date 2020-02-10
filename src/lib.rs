@@ -96,7 +96,7 @@ impl error::Error for QuotedPrintableError {
         "invalid quoted-printable input"
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         None
     }
 }
@@ -138,7 +138,7 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
     let filtered = input
         .into_iter()
         .filter_map(|&c| match c {
-            b'\t' | b'\r' | b'\n' | b' '...b'~' => Some(c as char),
+            b'\t' | b'\r' | b'\n' | b' '..=b'~' => Some(c as char),
             _ => None,
         })
         .collect::<String>();
@@ -336,7 +336,7 @@ pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> String {
 fn encode_byte(result: &mut Vec<u8>, to_append: u8, on_line: &mut usize, backup_pos: &mut usize) {
     match to_append {
         b'=' => append(result, b"=3D", on_line, backup_pos),
-        b'\t' | b' '...b'~' => append(result, &[to_append], on_line, backup_pos),
+        b'\t' | b' '..=b'~' => append(result, &[to_append], on_line, backup_pos),
         _ => append(result, &hex_encode_byte(to_append), on_line, backup_pos),
     }
 }
