@@ -7,12 +7,13 @@ A quoted-printable decoder and encoder.
 
 API
 ---
-quoted-printable exposes two functions at the moment:
+quoted-printable exposes four functions at the moment:
 
 ```rust
     decode<R: AsRef<[u8]>>(input: R, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
     encode<R: AsRef<[u8]>>(input: R) -> Vec<u8>
     encode_to_str<R: AsRef<[u8]>>(input: R) -> String
+    encode_to_writer<R: AsRef<[u8]>, W: Write>(writer: &mut W, input: R) -> std::io::Result<()>
 ```
 
 using `R: AsRef<[u8]>` means that you can pass in a variety of types, including:
