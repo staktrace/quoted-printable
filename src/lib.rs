@@ -1,32 +1,18 @@
 #![forbid(unsafe_code)]
 
-use std::fmt;
 use std::error;
+use std::fmt;
+use std::io;
+use std::io::Write;
 
 const LINE_LENGTH_LIMIT: usize = 76;
 
 static HEX_CHARS: &[char] = &[
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
 ];
 
 /// A flag that allows control over the decoding strictness.
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ParseMode {
     /// Perform strict checking over the input, and return an error if any
     /// input appears malformed.
@@ -102,7 +88,6 @@ impl error::Error for QuotedPrintableError {
         None
     }
 }
-
 
 /// Decodes a piece of quoted-printable data.
 ///
@@ -201,14 +186,14 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
                 let lower_char = lower as char;
                 if upper_char.is_digit(16) && lower_char.is_digit(16) {
                     if mode == ParseMode::Strict {
-                        if upper_char.to_uppercase().next() != Some(upper_char) ||
-                            lower_char.to_uppercase().next() != Some(lower_char)
+                        if upper_char.to_uppercase().next() != Some(upper_char)
+                            || lower_char.to_uppercase().next() != Some(lower_char)
                         {
                             return Err(QuotedPrintableError::LowercaseHexOctet);
                         }
                     }
-                    let combined = upper_char.to_digit(16).unwrap() << 4 |
-                        lower_char.to_digit(16).unwrap();
+                    let combined =
+                        upper_char.to_digit(16).unwrap() << 4 | lower_char.to_digit(16).unwrap();
                     decoded.push(combined as u8);
                 } else {
                     if mode == ParseMode::Strict {
@@ -226,28 +211,18 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
     Ok(decoded)
 }
 
-fn append(
-    result: &mut String,
-    to_append: &[char],
-    bytes_on_line: &mut usize,
-    backup_pos: &mut usize,
-) {
-    if *bytes_on_line + to_append.len() > LINE_LENGTH_LIMIT {
-        if *bytes_on_line == LINE_LENGTH_LIMIT {
-            // We're already at the max length, so inserting the '=' in the soft
-            // line break would put us over. Instead, we insert the soft line
-            // break at the backup pos, which is just before the last thing
-            // appended.
-            *bytes_on_line = result.len() - *backup_pos;
-            result.insert_str(*backup_pos, "=\r\n");
-        } else {
-            result.push_str("=\r\n");
-            *bytes_on_line = 0;
-        }
+fn append<W: Write>(writer: &mut W, to_append: &[u8], bytes_on_line: &mut usize) -> io::Result<()> {
+    // if the new input leads to line overflow or does not give
+    // enough space for inserting the '=' for a soft line break we
+    // soft line break
+    if *bytes_on_line + to_append.len() >= LINE_LENGTH_LIMIT {
+        writer.write_all(b"=\r\n")?;
+        *bytes_on_line = 0;
     }
-    result.extend(to_append);
-    *bytes_on_line = *bytes_on_line + to_append.len();
-    *backup_pos = result.len() - to_append.len();
+
+    writer.write_all(to_append)?;
+    *bytes_on_line += to_append.len();
+    Ok(())
 }
 
 /// Encodes some bytes into quoted-printable format.
@@ -266,44 +241,32 @@ fn append(
 /// ```
 #[inline(always)]
 pub fn encode<R: AsRef<[u8]>>(input: R) -> Vec<u8> {
-    let encoded_as_string = _encode(input.as_ref());
-    encoded_as_string.into()
+    let input = input.as_ref();
+    let mut output = Vec::with_capacity(input.len());
+    _encode(&mut output, input).expect("writing into vecs should never cause io errors");
+    output
 }
 
-fn _encode(input: &[u8]) -> String {
-    let mut result = String::new();
-    let mut on_line: usize = 0;
-    let mut backup_pos: usize = 0;
-    let mut was_cr = false;
-    let mut it = input.iter();
+#[inline]
 
-    while let Some(&byte) = it.next() {
-        if was_cr {
-            if byte == b'\n' {
-                result.push_str("\r\n");
-                on_line = 0;
-                was_cr = false;
-                continue;
-            }
-            // encode the CR ('\r') we skipped over before
-            append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
+fn _encode<W: Write>(writer: &mut W, input: &[u8]) -> io::Result<()> {
+    let mut it = input.iter().cloned().peekable();
+    let mut cur_line = 0;
+    while let Some(byte) = it.next() {
+        match byte {
+            b'\r' => match it.peek() {
+                Some(b'\n') => {
+                    cur_line = 0;
+                    writer.write_all(b"\r\n")?;
+                    it.next(); // drop the next byte
+                }
+                _ => append(writer, b"=0D", &mut cur_line)?,
+            },
+            byte => encode_byte(writer, byte, &mut cur_line)?,
         }
-        if byte == b'\r' {
-            // remember we had a CR ('\r') but do not encode it yet
-            was_cr = true;
-            continue;
-        } else {
-            was_cr = false;
-        }
-        encode_byte(&mut result, byte, &mut on_line, &mut backup_pos);
     }
 
-    // we haven't yet encoded the last CR ('\r') so do it now
-    if was_cr {
-        append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
-    }
-
-    result
+    Ok(())
 }
 
 /// Encodes some bytes into quoted-printable format.
@@ -324,24 +287,55 @@ fn _encode(input: &[u8]) -> String {
 /// ```
 #[inline(always)]
 pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> String {
-    _encode(input.as_ref())
-}
-
-#[inline]
-fn encode_byte(result: &mut String, to_append: u8, on_line: &mut usize, backup_pos: &mut usize) {
-    match to_append {
-        b'=' => append(result, &['=', '3', 'D'], on_line, backup_pos),
-        b'\t' | b' '..=b'~' => append(result, &[char::from(to_append)], on_line, backup_pos),
-        _ => append(result, &hex_encode_byte(to_append), on_line, backup_pos),
+    let input = input.as_ref();
+    let mut output = Vec::with_capacity(input.len());
+    _encode(&mut output, input.as_ref()).expect("writing into vecs should never cause io errors");
+    match String::from_utf8_lossy(&output) {
+        std::borrow::Cow::Borrowed(borrowed) => borrowed.to_string(),
+        std::borrow::Cow::Owned(owned) => owned,
     }
 }
 
+/// Encodes some bytes into quoted-printable format.
+///
+/// The difference to `encode` is that this function writes into a type that implements `Write`.
+///
+/// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
+/// 6.7. This function encodes a set of raw bytes into a format conformant with
+/// that spec. The output contains CRLF pairs as needed so that each line is
+/// wrapped to 76 characters or less (not including the CRLF).
+///
+/// # Examples
+///
+/// ```
+///     use std::io::Write;
+///     use quoted_printable::encode_to_writer;
+///     let mut writer = Vec::new();
+///     let encoded = encode_to_writer(&mut writer, "hello, \u{20ac} zone!").unwrap();
+///     assert_eq!(b"hello, =E2=82=AC zone!", writer.as_slice());
+/// ```
 #[inline(always)]
-fn hex_encode_byte(byte: u8) -> [char; 3] {
+pub fn encode_to_writer<R: AsRef<[u8]>, W: Write>(writer: &mut W, input: R) -> io::Result<()> {
+    _encode(writer, input.as_ref())
+}
+
+#[inline]
+fn encode_byte<W: Write>(writer: &mut W, byte: u8, cur_line: &mut usize) -> io::Result<()> {
+    match byte {
+        b'=' => append(writer, b"=3D", cur_line)?,
+        b'\t' | b' '..=b'~' => append(writer, &[byte], cur_line)?,
+        _ => append(writer, &hex_encode_byte(byte), cur_line)?,
+    }
+
+    Ok(())
+}
+
+#[inline(always)]
+fn hex_encode_byte(byte: u8) -> [u8; 3] {
     [
-        '=',
-        lower_nibble_to_hex(byte >> 4),
-        lower_nibble_to_hex(byte),
+        b'=',
+        lower_nibble_to_hex(byte >> 4) as u8,
+        lower_nibble_to_hex(byte) as u8,
     ]
 }
 
@@ -367,8 +361,10 @@ mod tests {
                     "Now's the time =\r\nfor all folk to come=\r\n \
                                                  to the aid of their country.",
                     ParseMode::Strict,
-                ).unwrap(),
-            ).unwrap()
+                )
+                .unwrap(),
+            )
+            .unwrap()
         );
         assert_eq!(
             "\r\nhello=world",
@@ -376,15 +372,15 @@ mod tests {
         );
         assert_eq!(
             "hello world\r\ngoodbye world",
-            String::from_utf8(
-                decode("hello world\r\ngoodbye world", ParseMode::Strict).unwrap(),
-            ).unwrap()
+            String::from_utf8(decode("hello world\r\ngoodbye world", ParseMode::Strict).unwrap(),)
+                .unwrap()
         );
         assert_eq!(
             "hello world\r\ngoodbye world",
             String::from_utf8(
                 decode("hello world   \r\ngoodbye world   ", ParseMode::Strict).unwrap(),
-            ).unwrap()
+            )
+            .unwrap()
         );
         assert_eq!(
             "hello world\r\ngoodbye world x",
@@ -392,8 +388,10 @@ mod tests {
                 decode(
                     "hello world   \r\ngoodbye world =  \r\nx",
                     ParseMode::Strict,
-                ).unwrap(),
-            ).unwrap()
+                )
+                .unwrap(),
+            )
+            .unwrap()
         );
 
         assert_eq!(true, decode("hello world=x", ParseMode::Strict).is_err());
@@ -431,7 +429,8 @@ mod tests {
             decode(
                 "12345678901234567890123456789012345678901234567890123456789012345678901234567",
                 ParseMode::Strict,
-            ).is_err()
+            )
+            .is_err()
         );
         assert_eq!(
             "12345678901234567890123456789012345678901234567890123456789012345678901234567",
@@ -439,8 +438,10 @@ mod tests {
                 decode(
                     "12345678901234567890123456789012345678901234567890123456789012345678901234567",
                     ParseMode::Robust,
-                ).unwrap(),
-            ).unwrap()
+                )
+                .unwrap(),
+            )
+            .unwrap()
         );
         assert_eq!(
             "1234567890123456789012345678901234567890123456789012345678901234567890123456",
@@ -448,8 +449,10 @@ mod tests {
                 decode(
                     "1234567890123456789012345678901234567890123456789012345678901234567890123456",
                     ParseMode::Strict,
-                ).unwrap(),
-            ).unwrap()
+                )
+                .unwrap(),
+            )
+            .unwrap()
         );
     }
 
@@ -469,10 +472,10 @@ mod tests {
             )
         );
         assert_eq!(
-            "this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,   woohoo!=C3=89",
+            "this=00is=C3=BFa=3Dlong=0Dstring=0Athat just fits in a line,woohoo!=C3=89",
             encode_to_str(
                 "this\u{0}is\u{FF}a=long\rstring\nthat just fits \
-                                             in a line,   woohoo!\u{c9}",
+                                             in a line,woohoo!\u{c9}",
             )
         );
         assert_eq!(
@@ -481,9 +484,9 @@ mod tests {
         );
         // Test that soft line breaks get inserted at the right place
         assert_eq!(
-            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
             encode_to_str(
-                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY",
             )
         );
         assert_eq!(
@@ -500,9 +503,9 @@ mod tests {
         );
         // Test that soft line breaks don't break up an encoded octet
         assert_eq!(
-            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=00Y",
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=00Y",
             encode_to_str(
-                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y",
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\u{0}Y",
             )
         );
         assert_eq!(
