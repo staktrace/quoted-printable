@@ -2,6 +2,8 @@
 
 use std::error;
 use std::fmt;
+use std::io;
+use std::io::Write;
 
 const LINE_LENGTH_LIMIT: usize = 76;
 
@@ -209,28 +211,29 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
     Ok(decoded)
 }
 
-fn append(
-    result: &mut String,
-    to_append: &[char],
+fn append<W: Write>(
+    writer: &mut W,
+    to_append: &[u8],
     bytes_on_line: &mut usize,
-    backup_pos: &mut usize,
-) {
-    if *bytes_on_line + to_append.len() > LINE_LENGTH_LIMIT {
-        if *bytes_on_line == LINE_LENGTH_LIMIT {
-            // We're already at the max length, so inserting the '=' in the soft
-            // line break would put us over. Instead, we insert the soft line
-            // break at the backup pos, which is just before the last thing
-            // appended.
-            *bytes_on_line = result.len() - *backup_pos;
-            result.insert_str(*backup_pos, "=\r\n");
-        } else {
-            result.push_str("=\r\n");
-            *bytes_on_line = 0;
-        }
+    is_last_byte: bool,
+) -> io::Result<()> {
+    // If the new input leads to line overflow or does not give
+    // enough space for inserting the '=' for a soft line break we
+    // add a soft line break
+    //
+    // On the last byte to write, we know that there are no other
+    // characters proceeding so we allow the 76th character to be
+    // something other than a soft line break.
+    if (is_last_byte && *bytes_on_line + to_append.len() > LINE_LENGTH_LIMIT)
+        || (!is_last_byte && *bytes_on_line + to_append.len() >= LINE_LENGTH_LIMIT)
+    {
+        writer.write_all(b"=\r\n")?;
+        *bytes_on_line = 0;
     }
-    result.extend(to_append);
-    *bytes_on_line = *bytes_on_line + to_append.len();
-    *backup_pos = result.len() - to_append.len();
+
+    writer.write_all(to_append)?;
+    *bytes_on_line += to_append.len();
+    Ok(())
 }
 
 /// Encodes some bytes into quoted-printable format.
@@ -249,44 +252,42 @@ fn append(
 /// ```
 #[inline(always)]
 pub fn encode<R: AsRef<[u8]>>(input: R) -> Vec<u8> {
-    let encoded_as_string = _encode(input.as_ref());
-    encoded_as_string.into()
+    encode_to_buffer(input.as_ref())
 }
 
-fn _encode(input: &[u8]) -> String {
-    let mut result = String::new();
-    let mut on_line: usize = 0;
-    let mut backup_pos: usize = 0;
-    let mut was_cr = false;
-    let mut it = input.iter();
+fn _encode<W: Write>(writer: &mut W, input: &[u8]) -> io::Result<()> {
+    let mut it = input.iter().cloned().peekable();
+    let mut bytes_on_current_line = 0;
 
-    while let Some(&byte) = it.next() {
-        if was_cr {
-            if byte == b'\n' {
-                result.push_str("\r\n");
-                on_line = 0;
-                was_cr = false;
-                continue;
-            }
-            // encode the CR ('\r') we skipped over before
-            append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
+    while let Some(byte) = it.next() {
+        let peek = it.peek();
+
+        // if the next character is empty this byte is the last byte
+        let is_last_byte = peek.is_none();
+        match byte {
+            b'\r' => match peek {
+                Some(b'\n') => {
+                    bytes_on_current_line = 0;
+                    writer.write_all(b"\r\n")?;
+                    it.next(); // drop the next byte since we used it
+                }
+                _ => append(writer, b"=0D", &mut bytes_on_current_line, is_last_byte)?,
+            },
+            _ => encode_byte(writer, byte, &mut bytes_on_current_line, is_last_byte)?,
         }
-        if byte == b'\r' {
-            // remember we had a CR ('\r') but do not encode it yet
-            was_cr = true;
-            continue;
-        } else {
-            was_cr = false;
-        }
-        encode_byte(&mut result, byte, &mut on_line, &mut backup_pos);
     }
 
-    // we haven't yet encoded the last CR ('\r') so do it now
-    if was_cr {
-        append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
-    }
+    Ok(())
+}
 
-    result
+#[inline(always)]
+fn encode_to_buffer(input: &[u8]) -> Vec<u8> {
+    // initialize buffer with 1.2x the size of the input
+    // for most inputs, this should ensure the buffer
+    // will not have to be grown to fit the entire input.
+    let mut buffer: Vec<u8> = Vec::with_capacity(((input.len() as f32) * 1.2) as usize);
+    _encode(&mut buffer, input).expect("writing into vecs should never cause io errors");
+    buffer
 }
 
 /// Encodes some bytes into quoted-printable format.
@@ -307,24 +308,65 @@ fn _encode(input: &[u8]) -> String {
 /// ```
 #[inline(always)]
 pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> String {
-    _encode(input.as_ref())
-}
-
-#[inline]
-fn encode_byte(result: &mut String, to_append: u8, on_line: &mut usize, backup_pos: &mut usize) {
-    match to_append {
-        b'=' => append(result, &['=', '3', 'D'], on_line, backup_pos),
-        b'\t' | b' '..=b'~' => append(result, &[char::from(to_append)], on_line, backup_pos),
-        _ => append(result, &hex_encode_byte(to_append), on_line, backup_pos),
+    let buffer = encode_to_buffer(input.as_ref());
+    match String::from_utf8_lossy(&buffer) {
+        std::borrow::Cow::Borrowed(borrowed) => {
+            drop(borrowed);
+            // given that the vec could represent the string immutably
+            // the vec must be utf8 encodable. this next line cannot panic.
+            String::from_utf8(buffer).expect("the buffer must be utf8 encodable")
+        }
+        // note: all quoted-printable encoded strings should be utf8 encodable
+        // this case is here for completion but it should never occur in practice
+        std::borrow::Cow::Owned(owned) => owned,
     }
 }
 
+/// Encodes some bytes into quoted-printable format.
+///
+/// The difference to `encode` is that this function writes into a type that implements `Write`.
+///
+/// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
+/// 6.7. This function encodes a set of raw bytes into a format conformant with
+/// that spec. The output contains CRLF pairs as needed so that each line is
+/// wrapped to 76 characters or less (not including the CRLF).
+///
+/// # Examples
+///
+/// ```
+///     use std::io::Write;
+///     use quoted_printable::encode_to_writer;
+///     let mut writer = Vec::new();
+///     let encoded = encode_to_writer(&mut writer, "hello, \u{20ac} zone!").unwrap();
+///     assert_eq!(b"hello, =E2=82=AC zone!", writer.as_slice());
+/// ```
 #[inline(always)]
-fn hex_encode_byte(byte: u8) -> [char; 3] {
+pub fn encode_to_writer<R: AsRef<[u8]>, W: Write>(writer: &mut W, input: R) -> io::Result<()> {
+    _encode(writer, input.as_ref())
+}
+
+#[inline]
+fn encode_byte<W: Write>(
+    writer: &mut W,
+    byte: u8,
+    bytes_on_line: &mut usize,
+    is_last_byte: bool,
+) -> io::Result<()> {
+    match byte {
+        b'=' => append(writer, b"=3D", bytes_on_line, is_last_byte)?,
+        b'\t' | b' '..=b'~' => append(writer, &[byte], bytes_on_line, is_last_byte)?,
+        _ => append(writer, &hex_encode_byte(byte), bytes_on_line, is_last_byte)?,
+    }
+
+    Ok(())
+}
+
+#[inline(always)]
+fn hex_encode_byte(byte: u8) -> [u8; 3] {
     [
-        '=',
-        lower_nibble_to_hex(byte >> 4),
-        lower_nibble_to_hex(byte),
+        b'=',
+        lower_nibble_to_hex(byte >> 4) as u8,
+        lower_nibble_to_hex(byte) as u8,
     ]
 }
 
