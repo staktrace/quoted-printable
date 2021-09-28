@@ -1,32 +1,16 @@
 #![forbid(unsafe_code)]
 
-use std::fmt;
 use std::error;
+use std::fmt;
 
 const LINE_LENGTH_LIMIT: usize = 76;
 
 static HEX_CHARS: &[char] = &[
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
 ];
 
 /// A flag that allows control over the decoding strictness.
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ParseMode {
     /// Perform strict checking over the input, and return an error if any
     /// input appears malformed.
@@ -102,7 +86,6 @@ impl error::Error for QuotedPrintableError {
         None
     }
 }
-
 
 /// Decodes a piece of quoted-printable data.
 ///
@@ -201,14 +184,14 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableErro
                 let lower_char = lower as char;
                 if upper_char.is_digit(16) && lower_char.is_digit(16) {
                     if mode == ParseMode::Strict {
-                        if upper_char.to_uppercase().next() != Some(upper_char) ||
-                            lower_char.to_uppercase().next() != Some(lower_char)
+                        if upper_char.to_uppercase().next() != Some(upper_char)
+                            || lower_char.to_uppercase().next() != Some(lower_char)
                         {
                             return Err(QuotedPrintableError::LowercaseHexOctet);
                         }
                     }
-                    let combined = upper_char.to_digit(16).unwrap() << 4 |
-                        lower_char.to_digit(16).unwrap();
+                    let combined =
+                        upper_char.to_digit(16).unwrap() << 4 | lower_char.to_digit(16).unwrap();
                     decoded.push(combined as u8);
                 } else {
                     if mode == ParseMode::Strict {
@@ -367,8 +350,10 @@ mod tests {
                     "Now's the time =\r\nfor all folk to come=\r\n \
                                                  to the aid of their country.",
                     ParseMode::Strict,
-                ).unwrap(),
-            ).unwrap()
+                )
+                .unwrap(),
+            )
+            .unwrap()
         );
         assert_eq!(
             "\r\nhello=world",
@@ -376,15 +361,15 @@ mod tests {
         );
         assert_eq!(
             "hello world\r\ngoodbye world",
-            String::from_utf8(
-                decode("hello world\r\ngoodbye world", ParseMode::Strict).unwrap(),
-            ).unwrap()
+            String::from_utf8(decode("hello world\r\ngoodbye world", ParseMode::Strict).unwrap(),)
+                .unwrap()
         );
         assert_eq!(
             "hello world\r\ngoodbye world",
             String::from_utf8(
                 decode("hello world   \r\ngoodbye world   ", ParseMode::Strict).unwrap(),
-            ).unwrap()
+            )
+            .unwrap()
         );
         assert_eq!(
             "hello world\r\ngoodbye world x",
@@ -392,8 +377,10 @@ mod tests {
                 decode(
                     "hello world   \r\ngoodbye world =  \r\nx",
                     ParseMode::Strict,
-                ).unwrap(),
-            ).unwrap()
+                )
+                .unwrap(),
+            )
+            .unwrap()
         );
 
         assert_eq!(true, decode("hello world=x", ParseMode::Strict).is_err());
@@ -431,7 +418,8 @@ mod tests {
             decode(
                 "12345678901234567890123456789012345678901234567890123456789012345678901234567",
                 ParseMode::Strict,
-            ).is_err()
+            )
+            .is_err()
         );
         assert_eq!(
             "12345678901234567890123456789012345678901234567890123456789012345678901234567",
@@ -439,8 +427,10 @@ mod tests {
                 decode(
                     "12345678901234567890123456789012345678901234567890123456789012345678901234567",
                     ParseMode::Robust,
-                ).unwrap(),
-            ).unwrap()
+                )
+                .unwrap(),
+            )
+            .unwrap()
         );
         assert_eq!(
             "1234567890123456789012345678901234567890123456789012345678901234567890123456",
@@ -448,8 +438,10 @@ mod tests {
                 decode(
                     "1234567890123456789012345678901234567890123456789012345678901234567890123456",
                     ParseMode::Strict,
-                ).unwrap(),
-            ).unwrap()
+                )
+                .unwrap(),
+            )
+            .unwrap()
         );
     }
 
