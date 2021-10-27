@@ -7,7 +7,7 @@ A quoted-printable decoder and encoder.
 
 API
 ---
-quoted-printable exposes two functions at the moment:
+quoted-printable exposes three functions at the moment:
 
 ```rust
     decode<R: AsRef<[u8]>>(input: R, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
