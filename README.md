@@ -1,6 +1,6 @@
 quoted-printable
 ===
-[![Build Status](https://travis-ci.org/staktrace/quoted-printable.svg?branch=master)](https://travis-ci.org/staktrace/quoted-printable)
+![Build Status](https://github.com/staktrace/quoted-printable/actions/workflows/test.yml/badge.svg)
 [![Crate](https://img.shields.io/crates/v/quoted_printable.svg)](https://crates.io/crates/quoted_printable)
 
 A quoted-printable decoder and encoder.

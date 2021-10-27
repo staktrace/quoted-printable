@@ -13,7 +13,6 @@ keywords = ["decode", "encode", "quoted", "printable"]
 categories = ["email", "parsing"]
 
 [badges]
-travis-ci = { repository = "staktrace/quoted-printable" }
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
