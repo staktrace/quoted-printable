@@ -11,6 +11,7 @@ repository = "https://github.com/staktrace/quoted-printable"
 readme = "README.md"
 keywords = ["decode", "encode", "quoted", "printable"]
 categories = ["email", "parsing"]
+exclude = [".gitignore", ".github/**"]
 
 [badges]
 maintenance = { status = "passively-maintained" }
