@@ -25,6 +25,15 @@ In general you should probably use "robust" decoding, as it will gracefully hand
 
 The encode and encode_to_str functions obviously do the reverse, and convert a set of raw bytes into quoted-printable.
 
+no_std
+---
+
+This crate supports no_std. By default the crate targets std via the `std` feature. You can deactivate the `default-features`  to support `no_std` like this:
+
+```toml
+quoted-printable = { version = "*", default-features = false }
+```
+
 Documentation
 ---
 See document on [https://docs.rs](https://docs.rs/quoted_printable/).
