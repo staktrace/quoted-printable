@@ -23,6 +23,9 @@ mod lib {
     pub use std::string::String;
 }
 
+const TAB: char = 9 as char;
+const SPACE: char = 32 as char;
+
 const LINE_LENGTH_LIMIT: usize = 76;
 
 static HEX_CHARS: &[char] = &[
@@ -281,12 +284,24 @@ fn _encode(input: &[u8]) -> lib::String {
     let mut result = lib::String::new();
     let mut on_line: usize = 0;
     let mut backup_pos: usize = 0;
+    let mut was_tab = false;
+    let mut was_space = false;
     let mut was_cr = false;
     let mut it = input.iter();
 
     while let Some(&byte) = it.next() {
         if was_cr {
             if byte == b'\n' {
+                // encode the last TAB we skipped over before
+                if was_tab {
+                    append(&mut result, &['=', '0', '9'], &mut on_line, &mut backup_pos);
+                    was_tab = false;
+                }
+                // encode the last SPACE we skipped over before
+                if was_space {
+                    append(&mut result, &['=', '2', '0'], &mut on_line, &mut backup_pos);
+                    was_space = false;
+                }
                 result.push_str("\r\n");
                 on_line = 0;
                 was_cr = false;
@@ -295,12 +310,38 @@ fn _encode(input: &[u8]) -> lib::String {
             // encode the CR ('\r') we skipped over before
             append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
         }
-        if byte == b'\r' {
-            // remember we had a CR ('\r') but do not encode it yet
-            was_cr = true;
-            continue;
-        } else {
-            was_cr = false;
+
+        if byte != b'\r' {
+            if was_tab {
+                // append the TAB we skipped over before
+                append(&mut result, &[TAB], &mut on_line, &mut backup_pos);
+            } else if was_space {
+                // append the SPACE we skipped over before
+                append(&mut result, &[SPACE], &mut on_line, &mut backup_pos);
+            }
+        }
+
+        match byte as char {
+            TAB => {
+                // remember we had a TAB but do not encode it yet
+                was_tab = true;
+                continue;
+            }
+            SPACE => {
+                // remember we had a SPACE but do not encode it yet
+                was_space = true;
+                continue;
+            }
+            '\r' => {
+                // remember we had a CR ('\r') but do not encode it yet
+                was_cr = true;
+                continue;
+            }
+            _ => {
+                was_tab = false;
+                was_space = false;
+                was_cr = false;
+            }
         }
         encode_byte(&mut result, byte, &mut on_line, &mut backup_pos);
     }
@@ -500,8 +541,8 @@ mod tests {
             )
         );
         assert_eq!(
-            "this \r\nhas linebreaks\r\n built right in.",
-            encode_to_str("this \r\nhas linebreaks\r\n built right in.")
+            "this=20\r\nhas linebreaks=09\r\n built\u{9}right in.",
+            encode_to_str("this \r\nhas linebreaks\u{9}\r\n built\u{9}right in.")
         );
         // Test that soft line breaks get inserted at the right place
         assert_eq!(
