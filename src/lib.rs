@@ -257,6 +257,33 @@ fn append(
     *backup_pos = result.len() - to_append.len();
 }
 
+fn encode_trailing_space_tab(
+    result: &mut lib::String,
+    bytes_on_line: &mut usize,
+    backup_pos: &mut usize,
+) {
+    // If the last character before a CRLF was a space or tab, then encode it
+    // since "Octets with values of 9 and 32 ... MUST NOT be so represented
+    // at the end of an encoded line." We can just pop it off the end of the
+    // result and append the encoded version. The encoded version may end up
+    // getting bumped to a new line, but in that case we know that the soft
+    // line break '=' will always fit because we're removing one char before
+    // calling append.
+    match result.chars().last() {
+        Some(' ') => {
+            *bytes_on_line -= 1;
+            result.pop();
+            append(result, &['=', '2', '0'], bytes_on_line, backup_pos);
+        }
+        Some('\t') => {
+            *bytes_on_line -= 1;
+            result.pop();
+            append(result, &['=', '0', '9'], bytes_on_line, backup_pos);
+        }
+        _ => (),
+    };
+}
+
 /// Encodes some bytes into quoted-printable format.
 ///
 /// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
@@ -287,6 +314,7 @@ fn _encode(input: &[u8]) -> lib::String {
     while let Some(&byte) = it.next() {
         if was_cr {
             if byte == b'\n' {
+                encode_trailing_space_tab(&mut result, &mut on_line, &mut backup_pos);
                 result.push_str("\r\n");
                 on_line = 0;
                 was_cr = false;
@@ -308,6 +336,8 @@ fn _encode(input: &[u8]) -> lib::String {
     // we haven't yet encoded the last CR ('\r') so do it now
     if was_cr {
         append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
+    } else {
+        encode_trailing_space_tab(&mut result, &mut on_line, &mut backup_pos);
     }
 
     result
@@ -500,7 +530,7 @@ mod tests {
             )
         );
         assert_eq!(
-            "this \r\nhas linebreaks\r\n built right in.",
+            "this=20\r\nhas linebreaks\r\n built right in.",
             encode_to_str("this \r\nhas linebreaks\r\n built right in.")
         );
         // Test that soft line breaks get inserted at the right place
@@ -552,6 +582,23 @@ mod tests {
         assert_eq!("a=0D\r\nb", encode_to_str("a\r\r\nb"));
         assert_eq!("=0D", encode_to_str("\r"));
         assert_eq!("=0D=0D", encode_to_str("\r\r"));
+        assert_eq!("\r\n", encode_to_str("\r\n"));
+
+        assert_eq!("trailing spaces =20", encode_to_str("trailing spaces  "),);
+        assert_eq!(
+            "trailing spaces and crlf =20\r\n",
+            encode_to_str("trailing spaces and crlf  \r\n"),
+        );
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=09",
+            encode_to_str(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\t"
+            ),
+        );
+        assert_eq!(
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=\r\n=20\r\n",
+            encode_to_str("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \r\n"),
+        );
     }
 
     #[test]
