@@ -230,6 +230,16 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<lib::Vec<u8>, QuotedPrintabl
             }
         }
     }
+
+    if filtered.ends_with('\n') {
+        // the filtered.lines() call above ignores trailing newlines instead
+        // of returning an empty string in the last element. So if there was
+        // a trailing newline, let's tack on the CRLF to carry that through
+        // the decoder.
+        decoded.push(b'\r');
+        decoded.push(b'\n');
+    }
+
     Ok(decoded)
 }
 
@@ -682,13 +692,19 @@ mod tests {
     #[test]
     fn test_qp_rt() {
         let s = b"foo\r\n";
-        let qp = encode_binary_to_str(s);
+        let qp = encode_to_str(s);
         let rt = decode(&qp, ParseMode::Strict).unwrap();
         assert_eq!(s.as_slice(), rt.as_slice());
     }
 
     #[test]
     fn test_binary() {
+        assert_eq!("foo=0D=0A", encode_binary_to_str("foo\r\n"));
+        assert_eq!(
+            "foo\r\n",
+            lib::String::from_utf8(decode("foo=0D=0A", ParseMode::Strict).unwrap()).unwrap()
+        );
+
         assert_eq!(
             "=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=\r\n=0A=0D=0A=0D=0A",
             encode_binary_to_str("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n")
