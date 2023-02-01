@@ -284,7 +284,15 @@ fn encode_trailing_space_tab(
     };
 }
 
-/// Encodes some bytes into quoted-printable format.
+#[derive(Debug, PartialEq)]
+enum InputMode {
+    /// Treat the input as text, and don't encode CRLF pairs.
+    Text,
+    /// Treat the input as binary, and encode all CRLF pairs.
+    Binary,
+}
+
+/// Encodes some bytes into quoted-printable format, treating the input as text.
 ///
 /// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
 /// 6.7. This function encodes a set of raw bytes into a format conformant with
@@ -300,11 +308,31 @@ fn encode_trailing_space_tab(
 /// ```
 #[inline(always)]
 pub fn encode<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
-    let encoded_as_string = _encode(input.as_ref());
+    let encoded_as_string = _encode(input.as_ref(), InputMode::Text);
     encoded_as_string.into()
 }
 
-fn _encode(input: &[u8]) -> lib::String {
+/// Encodes some bytes into quoted-printable format, treating the input as binary.
+///
+/// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
+/// 6.7. This function encodes a set of raw bytes into a format conformant with
+/// that spec. The output contains CRLF pairs as needed so that each line is
+/// wrapped to 76 characters or less (not including the CRLF).
+///
+/// # Examples
+///
+/// ```
+///     use quoted_printable::encode_binary;
+///     let encoded = encode_binary("hello, \u{20ac} zone!\r\n");
+///     assert_eq!("hello, =E2=82=AC zone!=0D=0A", String::from_utf8(encoded).unwrap());
+/// ```
+#[inline(always)]
+pub fn encode_binary<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
+    let encoded_as_string = _encode(input.as_ref(), InputMode::Binary);
+    encoded_as_string.into()
+}
+
+fn _encode(input: &[u8], mode: InputMode) -> lib::String {
     let mut result = lib::String::new();
     let mut on_line: usize = 0;
     let mut backup_pos: usize = 0;
@@ -315,8 +343,16 @@ fn _encode(input: &[u8]) -> lib::String {
         if was_cr {
             if byte == b'\n' {
                 encode_trailing_space_tab(&mut result, &mut on_line, &mut backup_pos);
-                result.push_str("\r\n");
-                on_line = 0;
+                match mode {
+                    InputMode::Text => {
+                        result.push_str("\r\n");
+                        on_line = 0;
+                    }
+                    InputMode::Binary => {
+                        append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
+                        append(&mut result, &['=', '0', 'A'], &mut on_line, &mut backup_pos);
+                    }
+                };
                 was_cr = false;
                 continue;
             }
@@ -361,7 +397,28 @@ fn _encode(input: &[u8]) -> lib::String {
 /// ```
 #[inline(always)]
 pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
-    _encode(input.as_ref())
+    _encode(input.as_ref(), InputMode::Text)
+}
+
+/// Encodes some bytes into quoted-printable format.
+///
+/// The difference to `encode_binary` is that this function returns a `String`.
+///
+/// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
+/// 6.7. This function encodes a set of raw bytes into a format conformant with
+/// that spec. The output contains CRLF pairs as needed so that each line is
+/// wrapped to 76 characters or less (not including the CRLF).
+///
+/// # Examples
+///
+/// ```
+///     use quoted_printable::encode_binary_to_str;
+///     let encoded = encode_binary_to_str("hello, \u{20ac} zone!\r\n");
+///     assert_eq!("hello, =E2=82=AC zone!=0D=0A", encoded);
+/// ```
+#[inline(always)]
+pub fn encode_binary_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
+    _encode(input.as_ref(), InputMode::Binary)
 }
 
 #[inline]
@@ -619,5 +676,22 @@ mod tests {
             let got_low = lower_nibble_to_hex(nr);
             assert_eq!(low, got_low);
         }
+    }
+
+    // from https://github.com/staktrace/quoted-printable/issues/13
+    #[test]
+    fn test_qp_rt() {
+        let s = b"foo\r\n";
+        let qp = encode_binary_to_str(s);
+        let rt = decode(&qp, ParseMode::Strict).unwrap();
+        assert_eq!(s.as_slice(), rt.as_slice());
+    }
+
+    #[test]
+    fn test_binary() {
+        assert_eq!(
+            "=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=0A=0D=\r\n=0A=0D=0A=0D=0A",
+            encode_binary_to_str("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n")
+        );
     }
 }
