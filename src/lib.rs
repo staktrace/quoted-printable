@@ -30,7 +30,7 @@ static HEX_CHARS: &[char] = &[
 ];
 
 /// A flag that allows control over the decoding strictness.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseMode {
     /// Perform strict checking over the input, and return an error if any
     /// input appears malformed.
@@ -41,7 +41,7 @@ pub enum ParseMode {
 }
 
 /// An error type that represents different kinds of decoding errors.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum QuotedPrintableError {
     /// A byte was found in the input that was outside of the allowed range. The
     /// allowed range is the horizontal tab (ASCII 0x09), CR/LF characters (ASCII
@@ -294,7 +294,7 @@ fn encode_trailing_space_tab(
     };
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum InputMode {
     /// Treat the input as text, and don't encode CRLF pairs.
     Text,
