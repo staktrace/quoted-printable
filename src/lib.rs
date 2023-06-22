@@ -363,7 +363,10 @@ fn encode_trailing_space_tab(
 /// ```
 #[inline(always)]
 pub fn encode<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
-    let encoded_as_string = _encode(input.as_ref(), Options::default().input_mode(InputMode::Text));
+    let encoded_as_string = _encode(
+        input.as_ref(),
+        Options::default().input_mode(InputMode::Text),
+    );
     encoded_as_string.into()
 }
 
@@ -383,7 +386,10 @@ pub fn encode<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
 /// ```
 #[inline(always)]
 pub fn encode_binary<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
-    let encoded_as_string = _encode(input.as_ref(), Options::default().input_mode(InputMode::Binary));
+    let encoded_as_string = _encode(
+        input.as_ref(),
+        Options::default().input_mode(InputMode::Binary),
+    );
     encoded_as_string.into()
 }
 
@@ -405,15 +411,33 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
                         on_line = 0;
                     }
                     InputMode::Binary => {
-                        append(&mut result, &['=', '0', 'D'], &mut on_line, limit, &mut backup_pos);
-                        append(&mut result, &['=', '0', 'A'], &mut on_line, limit, &mut backup_pos);
+                        append(
+                            &mut result,
+                            &['=', '0', 'D'],
+                            &mut on_line,
+                            limit,
+                            &mut backup_pos,
+                        );
+                        append(
+                            &mut result,
+                            &['=', '0', 'A'],
+                            &mut on_line,
+                            limit,
+                            &mut backup_pos,
+                        );
                     }
                 };
                 was_cr = false;
                 continue;
             }
             // encode the CR ('\r') we skipped over before
-            append(&mut result, &['=', '0', 'D'], &mut on_line, limit, &mut backup_pos);
+            append(
+                &mut result,
+                &['=', '0', 'D'],
+                &mut on_line,
+                limit,
+                &mut backup_pos,
+            );
         }
         if byte == b'\r' {
             // remember we had a CR ('\r') but do not encode it yet
@@ -427,7 +451,13 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
 
     // we haven't yet encoded the last CR ('\r') so do it now
     if was_cr {
-        append(&mut result, &['=', '0', 'D'], &mut on_line, limit, &mut backup_pos);
+        append(
+            &mut result,
+            &['=', '0', 'D'],
+            &mut on_line,
+            limit,
+            &mut backup_pos,
+        );
     } else {
         encode_trailing_space_tab(&mut result, &mut on_line, limit, &mut backup_pos);
     }
@@ -453,7 +483,10 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
 /// ```
 #[inline(always)]
 pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
-    _encode(input.as_ref(), Options::default().input_mode(InputMode::Text))
+    _encode(
+        input.as_ref(),
+        Options::default().input_mode(InputMode::Text),
+    )
 }
 
 /// Encodes some bytes into quoted-printable format.
@@ -474,7 +507,10 @@ pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
 /// ```
 #[inline(always)]
 pub fn encode_binary_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
-    _encode(input.as_ref(), Options::default().input_mode(InputMode::Binary))
+    _encode(
+        input.as_ref(),
+        Options::default().input_mode(InputMode::Binary),
+    )
 }
 
 #[inline(always)]
@@ -493,7 +529,13 @@ fn encode_byte(
     match to_append {
         b'=' => append(result, &['=', '3', 'D'], on_line, limit, backup_pos),
         b'\t' | b' '..=b'~' => append(result, &[char::from(to_append)], on_line, limit, backup_pos),
-        _ => append(result, &hex_encode_byte(to_append), on_line, limit, backup_pos),
+        _ => append(
+            result,
+            &hex_encode_byte(to_append),
+            on_line,
+            limit,
+            backup_pos,
+        ),
     }
 }
 
