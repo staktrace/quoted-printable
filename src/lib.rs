@@ -23,8 +23,6 @@ mod lib {
     pub use std::string::String;
 }
 
-const LINE_LENGTH_LIMIT: usize = 76;
-
 static HEX_CHARS: &[char] = &[
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
 ];
@@ -38,6 +36,51 @@ pub enum ParseMode {
     /// Perform robust parsing, and gracefully handle any malformed input. This
     /// can result in the decoded output being different than what was intended.
     Robust,
+}
+
+/// A flag that controls how to treat the input when encoding.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum InputMode {
+    /// Treat the input as text, and don't encode CRLF pairs.
+    Text,
+    /// Treat the input as binary, and encode all CRLF pairs.
+    Binary,
+}
+
+/// Options to control encoding and decoding behaviour.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Options {
+    /// Line length at which to wrap when encoding.
+    line_length_limit: usize,
+    /// How to treat the input when encoding.
+    input_mode: InputMode,
+    /// How strict to be while decoding.
+    parse_mode: ParseMode,
+}
+
+impl Options {
+    pub fn default() -> Self {
+        Options {
+            line_length_limit: 76,
+            input_mode: InputMode::Text,
+            parse_mode: ParseMode::Robust,
+        }
+    }
+
+    pub fn line_length_limit(mut self, limit: usize) -> Self {
+        self.line_length_limit = limit;
+        self
+    }
+
+    pub fn input_mode(mut self, mode: InputMode) -> Self {
+        self.input_mode = mode;
+        self
+    }
+
+    pub fn parse_mode(mut self, mode: ParseMode) -> Self {
+        self.parse_mode = mode;
+        self
+    }
 }
 
 /// An error type that represents different kinds of decoding errors.
@@ -140,10 +183,18 @@ pub fn decode<R: AsRef<[u8]>>(
     input: R,
     mode: ParseMode,
 ) -> Result<lib::Vec<u8>, QuotedPrintableError> {
-    _decode(input.as_ref(), mode)
+    _decode(input.as_ref(), Options::default().parse_mode(mode))
 }
 
-fn _decode(input: &[u8], mode: ParseMode) -> Result<lib::Vec<u8>, QuotedPrintableError> {
+#[inline(always)]
+pub fn decode_with_options<R: AsRef<[u8]>>(
+    input: R,
+    options: Options,
+) -> Result<lib::Vec<u8>, QuotedPrintableError> {
+    _decode(input.as_ref(), options)
+}
+
+fn _decode(input: &[u8], options: Options) -> Result<lib::Vec<u8>, QuotedPrintableError> {
     let filtered = input
         .into_iter()
         .filter_map(|&c| match c {
@@ -151,7 +202,7 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<lib::Vec<u8>, QuotedPrintabl
             _ => None,
         })
         .collect::<lib::String>();
-    if mode == ParseMode::Strict && filtered.len() != input.len() {
+    if options.parse_mode == ParseMode::Strict && filtered.len() != input.len() {
         return Err(QuotedPrintableError::InvalidByte);
     }
     let mut decoded = lib::Vec::new();
@@ -161,14 +212,14 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<lib::Vec<u8>, QuotedPrintabl
         let mut bytes = match lines.next() {
             Some(v) => v.trim_end().bytes(),
             None => {
-                if mode == ParseMode::Strict && add_line_break == Some(false) {
+                if options.parse_mode == ParseMode::Strict && add_line_break == Some(false) {
                     return Err(QuotedPrintableError::IncompleteHexOctet);
                 }
                 break;
             }
         };
 
-        if mode == ParseMode::Strict && bytes.len() > LINE_LENGTH_LIMIT {
+        if options.parse_mode == ParseMode::Strict && bytes.len() > options.line_length_limit {
             return Err(QuotedPrintableError::LineTooLong);
         }
 
@@ -195,7 +246,7 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<lib::Vec<u8>, QuotedPrintabl
                 let lower = match bytes.next() {
                     Some(v) => v,
                     None => {
-                        if mode == ParseMode::Strict {
+                        if options.parse_mode == ParseMode::Strict {
                             return Err(QuotedPrintableError::IncompleteHexOctet);
                         }
                         decoded.push(byte);
@@ -207,7 +258,7 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<lib::Vec<u8>, QuotedPrintabl
                 let upper_char = upper as char;
                 let lower_char = lower as char;
                 if upper_char.is_digit(16) && lower_char.is_digit(16) {
-                    if mode == ParseMode::Strict {
+                    if options.parse_mode == ParseMode::Strict {
                         if upper_char.to_uppercase().next() != Some(upper_char)
                             || lower_char.to_uppercase().next() != Some(lower_char)
                         {
@@ -218,7 +269,7 @@ fn _decode(input: &[u8], mode: ParseMode) -> Result<lib::Vec<u8>, QuotedPrintabl
                         upper_char.to_digit(16).unwrap() << 4 | lower_char.to_digit(16).unwrap();
                     decoded.push(combined as u8);
                 } else {
-                    if mode == ParseMode::Strict {
+                    if options.parse_mode == ParseMode::Strict {
                         return Err(QuotedPrintableError::InvalidHexOctet);
                     }
                     decoded.push(byte);
@@ -247,10 +298,11 @@ fn append(
     result: &mut lib::String,
     to_append: &[char],
     bytes_on_line: &mut usize,
+    limit: usize,
     backup_pos: &mut usize,
 ) {
-    if *bytes_on_line + to_append.len() > LINE_LENGTH_LIMIT {
-        if *bytes_on_line == LINE_LENGTH_LIMIT {
+    if *bytes_on_line + to_append.len() > limit {
+        if *bytes_on_line == limit {
             // We're already at the max length, so inserting the '=' in the soft
             // line break would put us over. Instead, we insert the soft line
             // break at the backup pos, which is just before the last thing
@@ -270,6 +322,7 @@ fn append(
 fn encode_trailing_space_tab(
     result: &mut lib::String,
     bytes_on_line: &mut usize,
+    limit: usize,
     backup_pos: &mut usize,
 ) {
     // If the last character before a CRLF was a space or tab, then encode it
@@ -283,23 +336,15 @@ fn encode_trailing_space_tab(
         Some(' ') => {
             *bytes_on_line -= 1;
             result.pop();
-            append(result, &['=', '2', '0'], bytes_on_line, backup_pos);
+            append(result, &['=', '2', '0'], bytes_on_line, limit, backup_pos);
         }
         Some('\t') => {
             *bytes_on_line -= 1;
             result.pop();
-            append(result, &['=', '0', '9'], bytes_on_line, backup_pos);
+            append(result, &['=', '0', '9'], bytes_on_line, limit, backup_pos);
         }
         _ => (),
     };
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum InputMode {
-    /// Treat the input as text, and don't encode CRLF pairs.
-    Text,
-    /// Treat the input as binary, and encode all CRLF pairs.
-    Binary,
 }
 
 /// Encodes some bytes into quoted-printable format, treating the input as text.
@@ -318,7 +363,7 @@ enum InputMode {
 /// ```
 #[inline(always)]
 pub fn encode<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
-    let encoded_as_string = _encode(input.as_ref(), InputMode::Text);
+    let encoded_as_string = _encode(input.as_ref(), Options::default().input_mode(InputMode::Text));
     encoded_as_string.into()
 }
 
@@ -338,11 +383,12 @@ pub fn encode<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
 /// ```
 #[inline(always)]
 pub fn encode_binary<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
-    let encoded_as_string = _encode(input.as_ref(), InputMode::Binary);
+    let encoded_as_string = _encode(input.as_ref(), Options::default().input_mode(InputMode::Binary));
     encoded_as_string.into()
 }
 
-fn _encode(input: &[u8], mode: InputMode) -> lib::String {
+fn _encode(input: &[u8], options: Options) -> lib::String {
+    let limit = options.line_length_limit;
     let mut result = lib::String::new();
     let mut on_line: usize = 0;
     let mut backup_pos: usize = 0;
@@ -352,22 +398,22 @@ fn _encode(input: &[u8], mode: InputMode) -> lib::String {
     while let Some(&byte) = it.next() {
         if was_cr {
             if byte == b'\n' {
-                encode_trailing_space_tab(&mut result, &mut on_line, &mut backup_pos);
-                match mode {
+                encode_trailing_space_tab(&mut result, &mut on_line, limit, &mut backup_pos);
+                match options.input_mode {
                     InputMode::Text => {
                         result.push_str("\r\n");
                         on_line = 0;
                     }
                     InputMode::Binary => {
-                        append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
-                        append(&mut result, &['=', '0', 'A'], &mut on_line, &mut backup_pos);
+                        append(&mut result, &['=', '0', 'D'], &mut on_line, limit, &mut backup_pos);
+                        append(&mut result, &['=', '0', 'A'], &mut on_line, limit, &mut backup_pos);
                     }
                 };
                 was_cr = false;
                 continue;
             }
             // encode the CR ('\r') we skipped over before
-            append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
+            append(&mut result, &['=', '0', 'D'], &mut on_line, limit, &mut backup_pos);
         }
         if byte == b'\r' {
             // remember we had a CR ('\r') but do not encode it yet
@@ -376,14 +422,14 @@ fn _encode(input: &[u8], mode: InputMode) -> lib::String {
         } else {
             was_cr = false;
         }
-        encode_byte(&mut result, byte, &mut on_line, &mut backup_pos);
+        encode_byte(&mut result, byte, &mut on_line, limit, &mut backup_pos);
     }
 
     // we haven't yet encoded the last CR ('\r') so do it now
     if was_cr {
-        append(&mut result, &['=', '0', 'D'], &mut on_line, &mut backup_pos);
+        append(&mut result, &['=', '0', 'D'], &mut on_line, limit, &mut backup_pos);
     } else {
-        encode_trailing_space_tab(&mut result, &mut on_line, &mut backup_pos);
+        encode_trailing_space_tab(&mut result, &mut on_line, limit, &mut backup_pos);
     }
 
     result
@@ -407,7 +453,7 @@ fn _encode(input: &[u8], mode: InputMode) -> lib::String {
 /// ```
 #[inline(always)]
 pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
-    _encode(input.as_ref(), InputMode::Text)
+    _encode(input.as_ref(), Options::default().input_mode(InputMode::Text))
 }
 
 /// Encodes some bytes into quoted-printable format.
@@ -428,7 +474,12 @@ pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
 /// ```
 #[inline(always)]
 pub fn encode_binary_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
-    _encode(input.as_ref(), InputMode::Binary)
+    _encode(input.as_ref(), Options::default().input_mode(InputMode::Binary))
+}
+
+#[inline(always)]
+pub fn encode_with_options<R: AsRef<[u8]>>(input: R, options: Options) -> lib::String {
+    _encode(input.as_ref(), options)
 }
 
 #[inline]
@@ -436,12 +487,13 @@ fn encode_byte(
     result: &mut lib::String,
     to_append: u8,
     on_line: &mut usize,
+    limit: usize,
     backup_pos: &mut usize,
 ) {
     match to_append {
-        b'=' => append(result, &['=', '3', 'D'], on_line, backup_pos),
-        b'\t' | b' '..=b'~' => append(result, &[char::from(to_append)], on_line, backup_pos),
-        _ => append(result, &hex_encode_byte(to_append), on_line, backup_pos),
+        b'=' => append(result, &['=', '3', 'D'], on_line, limit, backup_pos),
+        b'\t' | b' '..=b'~' => append(result, &[char::from(to_append)], on_line, limit, backup_pos),
+        _ => append(result, &hex_encode_byte(to_append), on_line, limit, backup_pos),
     }
 }
 
