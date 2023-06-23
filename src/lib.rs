@@ -50,7 +50,9 @@ pub enum InputMode {
 /// Options to control encoding and decoding behaviour.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Options {
-    /// Line length at which to wrap when encoding.
+    /// Line length at which to wrap when encoding. Also
+    /// determines if input is valid or not when decoding in
+    /// strict mode.
     line_length_limit: usize,
     /// How to treat the input when encoding.
     input_mode: InputMode,
@@ -152,6 +154,17 @@ impl std::error::Error for QuotedPrintableError {
 }
 
 /// Decodes a piece of quoted-printable data.
+/// This implementation is equivalent to `decode_with_options` with an
+/// `Options` that uses the provided `ParseMode`.
+#[inline(always)]
+pub fn decode<R: AsRef<[u8]>>(
+    input: R,
+    mode: ParseMode,
+) -> Result<lib::Vec<u8>, QuotedPrintableError> {
+    _decode(input.as_ref(), Options::default().parse_mode(mode))
+}
+
+/// Decodes a piece of quoted-printable data.
 ///
 /// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
 /// 6.7. This function attempts to decode input that is conformant with that
@@ -170,7 +183,7 @@ impl std::error::Error for QuotedPrintableError {
 ///
 /// # Errors
 ///
-/// If this function is called with ParseMode::Strict, then it may return
+/// If this function is called with the ParseMode::Strict option, then it may return
 /// a QuotedPrintableError if it detects that the input does not strictly conform
 /// to the quoted-printable spec. If this function is called with ParseMode::Robust,
 /// then it will attempt to gracefully handle any errors that arise. This might
@@ -178,14 +191,6 @@ impl std::error::Error for QuotedPrintableError {
 /// to IETF RFC 2045, section 6.7 for details on what constitutes valid and
 /// invalid input, and what a "robust" implementation would do in the face of
 /// invalid input.
-#[inline(always)]
-pub fn decode<R: AsRef<[u8]>>(
-    input: R,
-    mode: ParseMode,
-) -> Result<lib::Vec<u8>, QuotedPrintableError> {
-    _decode(input.as_ref(), Options::default().parse_mode(mode))
-}
-
 #[inline(always)]
 pub fn decode_with_options<R: AsRef<[u8]>>(
     input: R,
@@ -513,6 +518,20 @@ pub fn encode_binary_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
     )
 }
 
+/// Encodes some bytes into quoted-printable format, using the provided options.
+///
+/// The quoted-printable transfer-encoding is defined in IETF RFC 2045, section
+/// 6.7. This function encodes a set of raw bytes into a format conformant with
+/// that spec. The output contains CRLF pairs as needed so that each line is
+/// wrapped to 76 characters or less (not including the CRLF).
+///
+/// # Examples
+///
+/// ```
+///     use quoted_printable::{encode_with_options, Options};
+///     let encoded = encode_with_options("hello, \u{20ac} zone!", Options::default());
+///     assert_eq!("hello, =E2=82=AC zone!", encoded);
+/// ```
 #[inline(always)]
 pub fn encode_with_options<R: AsRef<[u8]>>(input: R, options: Options) -> lib::String {
     _encode(input.as_ref(), options)
