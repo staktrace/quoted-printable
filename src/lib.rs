@@ -404,8 +404,8 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
     let mut on_line: usize = 0;
     let mut backup_pos: usize = 0;
     let mut was_cr = false;
-    let mut it = input.iter();
 
+    let mut it = input.iter().peekable();
     while let Some(&byte) = it.next() {
         if was_cr {
             if byte == b'\n' {
@@ -451,7 +451,49 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
         } else {
             was_cr = false;
         }
-        encode_byte(&mut result, byte, &mut on_line, limit, &mut backup_pos);
+
+	// look for runs of characters that don't need encoding - this
+	// is very common (QP is normally used on ASCII text where
+	// most characters don't need encoding) and much faster than
+	// calling encode_byte on each character.  To keep this from
+	// completely reimplmenting append(), only do this if we have
+	// at least 3 characters left on the line and don't try to
+	// deal with the line-ending stuff.
+	if limit - on_line >= 3 && !needs_encoding(byte) {
+	    // peek ahead up to max line length and copy the run directly into the output
+	    let mut run_len: usize = 1;
+	    let max_run_len = limit - on_line - 3;
+
+	    // add the char to result directly - safe because we know we're not at the line length limit
+	    result.push(byte as char);
+
+	    // look ahead for a run of characters we can put directly into the result
+	    while let Some(&&next_byte) = it.peek() {
+		if run_len >= max_run_len {
+		    break;
+		}
+		if needs_encoding(next_byte) {
+		    break;
+		}
+
+		run_len += 1;
+
+		// add the next char to result directly - this is safe
+		// because we're not close to the line length limit
+		result.push(next_byte as char);
+
+		// consume the byte so we don't see it again
+		it.next();
+	    }
+
+	    // update counters for where we are in the line and what was last appended
+	    on_line += run_len;
+	    backup_pos = result.len();
+	    
+	    continue;
+	}
+
+	encode_byte(&mut result, byte, &mut on_line, limit, &mut backup_pos);
     }
 
     // we haven't yet encoded the last CR ('\r') so do it now
@@ -468,6 +510,15 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
     }
 
     result
+}
+
+#[inline(always)]
+fn needs_encoding(c: u8) -> bool {
+    return match c {
+	b'=' => true,
+	b'\t' | b' '..=b'~' => false,
+	_ => true,
+    };
 }
 
 /// Encodes some bytes into quoted-printable format.
