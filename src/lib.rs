@@ -456,7 +456,7 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
 	// is very common (QP is normally used on ASCII text where
 	// most characters don't need encoding) and much faster than
 	// calling encode_byte on each character.  To keep this from
-	// completely reimplmenting append(), only do this if we have
+	// completely reimplementing append(), only do this if we have
 	// at least 3 characters left on the line and don't try to
 	// deal with the line-ending stuff.
 	if limit - on_line >= 3 && !needs_encoding(byte) {
