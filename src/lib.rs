@@ -874,4 +874,18 @@ mod tests {
             encode_binary_to_str("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n")
         );
     }
+
+    #[test]
+    fn test_three() {
+	// this test enters the fast path for encoding runs of
+	// characters that don't need encoding with three characters
+	// left on the line and the next character needing encoding -
+	// checks for potential off-by-one mistake in that loop
+	assert_eq!(
+	    "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=3DX=\r\n=3D=3DY",
+            encode_to_str(
+		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=X==Y",
+            )
+        );
+    }
 }
