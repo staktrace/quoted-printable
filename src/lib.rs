@@ -462,14 +462,15 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
         if limit - on_line >= 3 && !needs_encoding(byte) {
             // peek ahead up to max line length and copy the run directly into the output
             let mut run_len: usize = 1;
-            let max_run_len = limit - on_line - 3;
+            let max_run_len: usize = limit - on_line - 2;
+            debug_assert!(max_run_len >= run_len);
 
             // add the char to result directly - safe because we know we're not at the line length limit
             result.push(byte as char);
 
             // look ahead for a run of characters we can put directly into the result
             while let Some(&&next_byte) = it.peek() {
-                if run_len >= max_run_len {
+                if run_len == max_run_len {
                     break;
                 }
                 if needs_encoding(next_byte) {
