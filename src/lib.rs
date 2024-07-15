@@ -452,48 +452,48 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
             was_cr = false;
         }
 
-	// look for runs of characters that don't need encoding - this
-	// is very common (QP is normally used on ASCII text where
-	// most characters don't need encoding) and much faster than
-	// calling encode_byte on each character.  To keep this from
-	// completely reimplementing append(), only do this if we have
-	// at least 3 characters left on the line and don't try to
-	// deal with the line-ending stuff.
-	if limit - on_line >= 3 && !needs_encoding(byte) {
-	    // peek ahead up to max line length and copy the run directly into the output
-	    let mut run_len: usize = 1;
-	    let max_run_len = limit - on_line - 3;
+        // look for runs of characters that don't need encoding - this
+        // is very common (QP is normally used on ASCII text where
+        // most characters don't need encoding) and much faster than
+        // calling encode_byte on each character.  To keep this from
+        // completely reimplementing append(), only do this if we have
+        // at least 3 characters left on the line and don't try to
+        // deal with the line-ending stuff.
+        if limit - on_line >= 3 && !needs_encoding(byte) {
+            // peek ahead up to max line length and copy the run directly into the output
+            let mut run_len: usize = 1;
+            let max_run_len = limit - on_line - 3;
 
-	    // add the char to result directly - safe because we know we're not at the line length limit
-	    result.push(byte as char);
+            // add the char to result directly - safe because we know we're not at the line length limit
+            result.push(byte as char);
 
-	    // look ahead for a run of characters we can put directly into the result
-	    while let Some(&&next_byte) = it.peek() {
-		if run_len >= max_run_len {
-		    break;
-		}
-		if needs_encoding(next_byte) {
-		    break;
-		}
+            // look ahead for a run of characters we can put directly into the result
+            while let Some(&&next_byte) = it.peek() {
+                if run_len >= max_run_len {
+                    break;
+                }
+                if needs_encoding(next_byte) {
+                    break;
+                }
 
-		run_len += 1;
+                run_len += 1;
 
-		// add the next char to result directly - this is safe
-		// because we're not close to the line length limit
-		result.push(next_byte as char);
+                // add the next char to result directly - this is safe
+                // because we're not close to the line length limit
+                result.push(next_byte as char);
 
-		// consume the byte so we don't see it again
-		it.next();
-	    }
+                // consume the byte so we don't see it again
+                it.next();
+            }
 
-	    // update counters for where we are in the line and what was last appended
-	    on_line += run_len;
-	    backup_pos = result.len();
-	    
-	    continue;
-	}
+            // update counters for where we are in the line and what was last appended
+            on_line += run_len;
+            backup_pos = result.len();
 
-	encode_byte(&mut result, byte, &mut on_line, limit, &mut backup_pos);
+            continue;
+        }
+
+        encode_byte(&mut result, byte, &mut on_line, limit, &mut backup_pos);
     }
 
     // we haven't yet encoded the last CR ('\r') so do it now
@@ -515,9 +515,9 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
 #[inline(always)]
 fn needs_encoding(c: u8) -> bool {
     return match c {
-	b'=' => true,
-	b'\t' | b' '..=b'~' => false,
-	_ => true,
+        b'=' => true,
+        b'\t' | b' '..=b'~' => false,
+        _ => true,
     };
 }
 
@@ -877,11 +877,11 @@ mod tests {
 
     #[test]
     fn test_three() {
-	// this test enters the fast path for encoding runs of
-	// characters that don't need encoding with three characters
-	// left on the line and the next character needing encoding -
-	// checks for potential off-by-one mistake in that loop
-	assert_eq!(
+        // this test enters the fast path for encoding runs of
+        // characters that don't need encoding with three characters
+        // left on the line and the next character needing encoding -
+        // checks for potential off-by-one mistake in that loop
+        assert_eq!(
 	    "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=3DX=\r\n=3D=3DY",
             encode_to_str(
 		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=X==Y",
