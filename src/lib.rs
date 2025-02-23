@@ -201,7 +201,7 @@ pub fn decode_with_options<R: AsRef<[u8]>>(
 
 fn _decode(input: &[u8], options: Options) -> Result<lib::Vec<u8>, QuotedPrintableError> {
     let filtered = input
-        .into_iter()
+        .iter()
         .filter_map(|&c| match c {
             b'\t' | b'\r' | b'\n' | b' '..=b'~' => Some(c as char),
             _ => None,
