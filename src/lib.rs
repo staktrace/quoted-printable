@@ -350,7 +350,7 @@ fn encode_trailing_space_tab(
             append(result, &['=', '0', '9'], bytes_on_line, limit, backup_pos);
         }
         _ => (),
-    };
+    }
 }
 
 /// Encodes some bytes into quoted-printable format, treating the input as text.
@@ -432,7 +432,7 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
                             &mut backup_pos,
                         );
                     }
-                };
+                }
                 was_cr = false;
                 continue;
             }
