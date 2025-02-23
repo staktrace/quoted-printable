@@ -262,7 +262,7 @@ fn _decode(input: &[u8], options: Options) -> Result<lib::Vec<u8>, QuotedPrintab
                 };
                 let upper_char = upper as char;
                 let lower_char = lower as char;
-                if upper_char.is_digit(16) && lower_char.is_digit(16) {
+                if upper_char.is_ascii_hexdigit() && lower_char.is_ascii_hexdigit() {
                     if options.parse_mode == ParseMode::Strict {
                         if upper_char.to_uppercase().next() != Some(upper_char)
                             || lower_char.to_uppercase().next() != Some(lower_char)
