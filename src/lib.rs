@@ -61,14 +61,6 @@ pub struct Options {
 }
 
 impl Options {
-    pub fn default() -> Self {
-        Options {
-            line_length_limit: 76,
-            input_mode: InputMode::Text,
-            parse_mode: ParseMode::Robust,
-        }
-    }
-
     pub fn line_length_limit(mut self, limit: usize) -> Self {
         self.line_length_limit = limit;
         self
@@ -82,6 +74,16 @@ impl Options {
     pub fn parse_mode(mut self, mode: ParseMode) -> Self {
         self.parse_mode = mode;
         self
+    }
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Options {
+            line_length_limit: 76,
+            input_mode: InputMode::Text,
+            parse_mode: ParseMode::Robust,
+        }
     }
 }
 
