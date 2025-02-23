@@ -185,9 +185,9 @@ pub fn decode<R: AsRef<[u8]>>(
 ///
 /// # Errors
 ///
-/// If this function is called with the ParseMode::Strict option, then it may return
-/// a QuotedPrintableError if it detects that the input does not strictly conform
-/// to the quoted-printable spec. If this function is called with ParseMode::Robust,
+/// If this function is called with the `ParseMode::Strict` option, then it may return
+/// a `QuotedPrintableError` if it detects that the input does not strictly conform
+/// to the quoted-printable spec. If this function is called with `ParseMode::Robust`,
 /// then it will attempt to gracefully handle any errors that arise. This might
 /// result in input bytes being stripped out and ignored in some cases. Refer
 /// to IETF RFC 2045, section 6.7 for details on what constitutes valid and
