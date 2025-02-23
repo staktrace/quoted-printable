@@ -515,11 +515,11 @@ fn _encode(input: &[u8], options: Options) -> lib::String {
 
 #[inline(always)]
 fn needs_encoding(c: u8) -> bool {
-    return match c {
+    match c {
         b'=' => true,
         b'\t' | b' '..=b'~' => false,
         _ => true,
-    };
+    }
 }
 
 /// Encodes some bytes into quoted-printable format.
