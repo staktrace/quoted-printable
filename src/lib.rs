@@ -320,7 +320,7 @@ fn append(
         }
     }
     result.extend(to_append);
-    *bytes_on_line = *bytes_on_line + to_append.len();
+    *bytes_on_line += to_append.len();
     *backup_pos = result.len() - to_append.len();
 }
 
