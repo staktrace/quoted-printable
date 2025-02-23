@@ -1,27 +1,10 @@
 #![forbid(unsafe_code)]
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(feature = "std"))]
 extern crate alloc;
-#[cfg(feature = "std")]
-extern crate std;
 
-mod lib {
-    #[cfg(not(feature = "std"))]
-    pub use alloc::fmt;
-    #[cfg(feature = "std")]
-    pub use std::fmt;
-
-    #[cfg(not(feature = "std"))]
-    pub use alloc::vec::Vec;
-    #[cfg(feature = "std")]
-    pub use std::vec::Vec;
-
-    #[cfg(not(feature = "std"))]
-    pub use alloc::string::String;
-    #[cfg(feature = "std")]
-    pub use std::string::String;
-}
+use alloc::{string::String, vec::Vec};
+use core::fmt;
 
 static HEX_CHARS: &[char] = &[
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
@@ -110,8 +93,8 @@ pub enum QuotedPrintableError {
     LowercaseHexOctet,
 }
 
-impl lib::fmt::Display for QuotedPrintableError {
-    fn fmt(&self, f: &mut lib::fmt::Formatter) -> lib::fmt::Result {
+impl fmt::Display for QuotedPrintableError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             QuotedPrintableError::InvalidByte => {
                 write!(
@@ -159,10 +142,7 @@ impl std::error::Error for QuotedPrintableError {
 /// This implementation is equivalent to `decode_with_options` with an
 /// `Options` that uses the provided `ParseMode`.
 #[inline(always)]
-pub fn decode<R: AsRef<[u8]>>(
-    input: R,
-    mode: ParseMode,
-) -> Result<lib::Vec<u8>, QuotedPrintableError> {
+pub fn decode<R: AsRef<[u8]>>(input: R, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError> {
     _decode(input.as_ref(), Options::default().parse_mode(mode))
 }
 
@@ -197,22 +177,22 @@ pub fn decode<R: AsRef<[u8]>>(
 pub fn decode_with_options<R: AsRef<[u8]>>(
     input: R,
     options: Options,
-) -> Result<lib::Vec<u8>, QuotedPrintableError> {
+) -> Result<Vec<u8>, QuotedPrintableError> {
     _decode(input.as_ref(), options)
 }
 
-fn _decode(input: &[u8], options: Options) -> Result<lib::Vec<u8>, QuotedPrintableError> {
+fn _decode(input: &[u8], options: Options) -> Result<Vec<u8>, QuotedPrintableError> {
     let filtered = input
         .iter()
         .filter_map(|&c| match c {
             b'\t' | b'\r' | b'\n' | b' '..=b'~' => Some(c as char),
             _ => None,
         })
-        .collect::<lib::String>();
+        .collect::<String>();
     if options.parse_mode == ParseMode::Strict && filtered.len() != input.len() {
         return Err(QuotedPrintableError::InvalidByte);
     }
-    let mut decoded = lib::Vec::new();
+    let mut decoded = Vec::new();
     let mut lines = filtered.lines();
     let mut add_line_break = None;
     loop {
@@ -301,7 +281,7 @@ fn _decode(input: &[u8], options: Options) -> Result<lib::Vec<u8>, QuotedPrintab
 }
 
 fn append(
-    result: &mut lib::String,
+    result: &mut String,
     to_append: &[char],
     bytes_on_line: &mut usize,
     limit: usize,
@@ -326,7 +306,7 @@ fn append(
 }
 
 fn encode_trailing_space_tab(
-    result: &mut lib::String,
+    result: &mut String,
     bytes_on_line: &mut usize,
     limit: usize,
     backup_pos: &mut usize,
@@ -368,7 +348,7 @@ fn encode_trailing_space_tab(
 ///     assert_eq!("hello, =E2=82=AC zone!", String::from_utf8(encoded).unwrap());
 /// ```
 #[inline(always)]
-pub fn encode<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
+pub fn encode<R: AsRef<[u8]>>(input: R) -> Vec<u8> {
     let encoded_as_string = _encode(
         input.as_ref(),
         Options::default().input_mode(InputMode::Text),
@@ -391,7 +371,7 @@ pub fn encode<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
 ///     assert_eq!("hello, =E2=82=AC zone!=0D=0A", String::from_utf8(encoded).unwrap());
 /// ```
 #[inline(always)]
-pub fn encode_binary<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
+pub fn encode_binary<R: AsRef<[u8]>>(input: R) -> Vec<u8> {
     let encoded_as_string = _encode(
         input.as_ref(),
         Options::default().input_mode(InputMode::Binary),
@@ -399,9 +379,9 @@ pub fn encode_binary<R: AsRef<[u8]>>(input: R) -> lib::Vec<u8> {
     encoded_as_string.into()
 }
 
-fn _encode(input: &[u8], options: Options) -> lib::String {
+fn _encode(input: &[u8], options: Options) -> String {
     let limit = options.line_length_limit;
-    let mut result = lib::String::new();
+    let mut result = String::new();
     let mut on_line: usize = 0;
     let mut backup_pos: usize = 0;
     let mut was_cr = false;
@@ -540,7 +520,7 @@ fn needs_encoding(c: u8) -> bool {
 ///     assert_eq!("hello, =E2=82=AC zone!", encoded);
 /// ```
 #[inline(always)]
-pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
+pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> String {
     _encode(
         input.as_ref(),
         Options::default().input_mode(InputMode::Text),
@@ -564,7 +544,7 @@ pub fn encode_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
 ///     assert_eq!("hello, =E2=82=AC zone!=0D=0A", encoded);
 /// ```
 #[inline(always)]
-pub fn encode_binary_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
+pub fn encode_binary_to_str<R: AsRef<[u8]>>(input: R) -> String {
     _encode(
         input.as_ref(),
         Options::default().input_mode(InputMode::Binary),
@@ -586,13 +566,13 @@ pub fn encode_binary_to_str<R: AsRef<[u8]>>(input: R) -> lib::String {
 ///     assert_eq!("hello, =E2=82=AC zone!", encoded);
 /// ```
 #[inline(always)]
-pub fn encode_with_options<R: AsRef<[u8]>>(input: R, options: Options) -> lib::String {
+pub fn encode_with_options<R: AsRef<[u8]>>(input: R, options: Options) -> String {
     _encode(input.as_ref(), options)
 }
 
 #[inline]
 fn encode_byte(
-    result: &mut lib::String,
+    result: &mut String,
     to_append: u8,
     on_line: &mut usize,
     limit: usize,
@@ -633,11 +613,11 @@ mod tests {
     fn test_decode() {
         assert_eq!(
             "hello world",
-            lib::String::from_utf8(decode("hello world", ParseMode::Strict).unwrap()).unwrap()
+            String::from_utf8(decode("hello world", ParseMode::Strict).unwrap()).unwrap()
         );
         assert_eq!(
             "Now's the time for all folk to come to the aid of their country.",
-            lib::String::from_utf8(
+            String::from_utf8(
                 decode(
                     "Now's the time =\r\nfor all folk to come=\r\n \
                                                  to the aid of their country.",
@@ -649,26 +629,23 @@ mod tests {
         );
         assert_eq!(
             "\r\nhello=world",
-            lib::String::from_utf8(decode("=0D=0Ahello=3Dworld", ParseMode::Strict).unwrap())
+            String::from_utf8(decode("=0D=0Ahello=3Dworld", ParseMode::Strict).unwrap()).unwrap()
+        );
+        assert_eq!(
+            "hello world\r\ngoodbye world",
+            String::from_utf8(decode("hello world\r\ngoodbye world", ParseMode::Strict).unwrap(),)
                 .unwrap()
         );
         assert_eq!(
             "hello world\r\ngoodbye world",
-            lib::String::from_utf8(
-                decode("hello world\r\ngoodbye world", ParseMode::Strict).unwrap(),
-            )
-            .unwrap()
-        );
-        assert_eq!(
-            "hello world\r\ngoodbye world",
-            lib::String::from_utf8(
+            String::from_utf8(
                 decode("hello world   \r\ngoodbye world   ", ParseMode::Strict).unwrap(),
             )
             .unwrap()
         );
         assert_eq!(
             "hello world\r\ngoodbye world x",
-            lib::String::from_utf8(
+            String::from_utf8(
                 decode(
                     "hello world   \r\ngoodbye world =  \r\nx",
                     ParseMode::Strict,
@@ -681,31 +658,31 @@ mod tests {
         assert_eq!(true, decode("hello world=x", ParseMode::Strict).is_err());
         assert_eq!(
             "hello world=x",
-            lib::String::from_utf8(decode("hello world=x", ParseMode::Robust).unwrap()).unwrap()
+            String::from_utf8(decode("hello world=x", ParseMode::Robust).unwrap()).unwrap()
         );
 
         assert_eq!(true, decode("hello =world=", ParseMode::Strict).is_err());
         assert_eq!(
             "hello =world",
-            lib::String::from_utf8(decode("hello =world=", ParseMode::Robust).unwrap()).unwrap()
+            String::from_utf8(decode("hello =world=", ParseMode::Robust).unwrap()).unwrap()
         );
 
         assert_eq!(true, decode("hello world=3d", ParseMode::Strict).is_err());
         assert_eq!(
             "hello world=",
-            lib::String::from_utf8(decode("hello world=3d", ParseMode::Robust).unwrap()).unwrap()
+            String::from_utf8(decode("hello world=3d", ParseMode::Robust).unwrap()).unwrap()
         );
 
         assert_eq!(true, decode("hello world=3m", ParseMode::Strict).is_err());
         assert_eq!(
             "hello world=3m",
-            lib::String::from_utf8(decode("hello world=3m", ParseMode::Robust).unwrap()).unwrap()
+            String::from_utf8(decode("hello world=3m", ParseMode::Robust).unwrap()).unwrap()
         );
 
         assert_eq!(true, decode("hello\u{FF}world", ParseMode::Strict).is_err());
         assert_eq!(
             "helloworld",
-            lib::String::from_utf8(decode("hello\u{FF}world", ParseMode::Robust).unwrap()).unwrap()
+            String::from_utf8(decode("hello\u{FF}world", ParseMode::Robust).unwrap()).unwrap()
         );
 
         assert_eq!(
@@ -718,7 +695,7 @@ mod tests {
         );
         assert_eq!(
             "12345678901234567890123456789012345678901234567890123456789012345678901234567",
-            lib::String::from_utf8(
+            String::from_utf8(
                 decode(
                     "12345678901234567890123456789012345678901234567890123456789012345678901234567",
                     ParseMode::Robust,
@@ -729,7 +706,7 @@ mod tests {
         );
         assert_eq!(
             "1234567890123456789012345678901234567890123456789012345678901234567890123456",
-            lib::String::from_utf8(
+            String::from_utf8(
                 decode(
                     "1234567890123456789012345678901234567890123456789012345678901234567890123456",
                     ParseMode::Strict,
@@ -868,7 +845,7 @@ mod tests {
         assert_eq!("foo=0D=0A", encode_binary_to_str("foo\r\n"));
         assert_eq!(
             "foo\r\n",
-            lib::String::from_utf8(decode("foo=0D=0A", ParseMode::Strict).unwrap()).unwrap()
+            String::from_utf8(decode("foo=0D=0A", ParseMode::Strict).unwrap()).unwrap()
         );
 
         assert_eq!(
