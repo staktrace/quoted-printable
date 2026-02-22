@@ -867,4 +867,25 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn test_single_cr_nl() {
+        // RFC2045 6.7
+        // Control characters other than TAB, or CR and LF as
+        // parts of CRLF pairs, must not appear. The same is true
+        // for octets with decimal values greater than 126.
+        decode(b"a\ra", ParseMode::Strict).unwrap_err();
+        decode(b"a\na", ParseMode::Strict).unwrap_err();
+        decode(b"a\r\na", ParseMode::Strict).unwrap();
+    }
+
+    #[test]
+    fn test_whitespace_and_tab() {
+        // RFC2045 6.7
+        // Any TAB (HT) or SPACE characters
+        // on an encoded line MUST thus be followed on that line
+        // by a printable character.
+        decode(b"\t", ParseMode::Strict).unwrap_err();
+        decode(b" ", ParseMode::Strict).unwrap_err();
+    }
 }
