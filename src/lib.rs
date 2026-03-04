@@ -189,8 +189,23 @@ fn _decode(input: &[u8], options: Options) -> Result<Vec<u8>, QuotedPrintableErr
             _ => None,
         })
         .collect::<String>();
-    if options.parse_mode == ParseMode::Strict && filtered.len() != input.len() {
-        return Err(QuotedPrintableError::InvalidByte);
+    if options.parse_mode == ParseMode::Strict {
+        if filtered.len() != input.len() {
+            return Err(QuotedPrintableError::InvalidByte);
+        }
+        let mut last = None;
+        for b in filtered.bytes() {
+            if last == None && b == b'\n' {
+                return Err(QuotedPrintableError::InvalidByte);
+            }
+            if (last == Some(b'\r')) != (b == b'\n') {
+                return Err(QuotedPrintableError::InvalidByte);
+            }
+            last = Some(b);
+        }
+        if last == Some(b'\r') {
+            return Err(QuotedPrintableError::InvalidByte);
+        }
     }
     let mut decoded = Vec::new();
     let mut lines = filtered.lines();
@@ -866,5 +881,18 @@ mod tests {
 		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=X==Y",
             )
         );
+    }
+
+    #[test]
+    fn test_single_cr_nl() {
+        // RFC2045 6.7
+        // Control characters other than TAB, or CR and LF as
+        // parts of CRLF pairs, must not appear. The same is true
+        // for octets with decimal values greater than 126.
+        decode(b"a\ra", ParseMode::Strict).unwrap_err();
+        decode(b"a\na", ParseMode::Strict).unwrap_err();
+        decode(b"\na", ParseMode::Strict).unwrap_err();
+        decode(b"aa\r", ParseMode::Strict).unwrap_err();
+        decode(b"a\r\na", ParseMode::Strict).unwrap();
     }
 }
