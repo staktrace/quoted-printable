@@ -396,7 +396,7 @@ pub fn encode_binary<R: AsRef<[u8]>>(input: R) -> Vec<u8> {
 
 fn _encode(input: &[u8], options: Options) -> String {
     let limit = options.line_length_limit;
-    let mut result = String::new();
+    let mut result = String::with_capacity(input.len());
     let mut on_line: usize = 0;
     let mut backup_pos: usize = 0;
     let mut was_cr = false;
