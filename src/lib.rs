@@ -283,7 +283,7 @@ fn _decode(input: &[u8], options: Options) -> Result<Vec<u8>, QuotedPrintableErr
         }
     }
 
-    if filtered.ends_with('\n') {
+    if filtered.ends_with('\n') && add_line_break == Some(true) {
         // the filtered.lines() call above ignores trailing newlines instead
         // of returning an empty string in the last element. So if there was
         // a trailing newline, let's tack on the CRLF to carry that through
@@ -894,5 +894,17 @@ mod tests {
         decode(b"\na", ParseMode::Strict).unwrap_err();
         decode(b"aa\r", ParseMode::Strict).unwrap_err();
         decode(b"a\r\na", ParseMode::Strict).unwrap();
+    }
+
+    #[test]
+    fn test_linebreaks() {
+        // https://github.com/staktrace/quoted-printable/issues/26
+        // ensure we add the trailing CRLF only if it's not a soft
+        // linebreak
+        assert_eq!(decode(b"=\r\n", ParseMode::Strict).unwrap(), b"");
+        assert_eq!(decode(b"=\r\na", ParseMode::Strict).unwrap(), b"a");
+        assert_eq!(decode(b"a\r\n", ParseMode::Strict).unwrap(), b"a\r\n");
+        assert_eq!(decode(b"\r\n", ParseMode::Strict).unwrap(), b"\r\n");
+        assert_eq!(decode(b"a=\r\n", ParseMode::Strict).unwrap(), b"a");
     }
 }
