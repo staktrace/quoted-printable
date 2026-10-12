@@ -49,6 +49,12 @@ impl Options {
     /// them. This tolerates non-conforming quoted-printable text produced by
     /// some MHTML generators. Charset decoding remains the caller's task.
     /// Defaults to false and has no effect in strict mode or when encoding.
+    ///
+    /// ```
+    /// use quoted_printable::{decode_with_options, Options};
+    /// let options = Options::default().preserve_unencoded_8bit_bytes(true);
+    /// assert_eq!(decode_with_options("café=20menu", options).unwrap(), "café menu".as_bytes());
+    /// ```
     pub fn preserve_unencoded_8bit_bytes(mut self, preserve: bool) -> Self {
         self.preserve_unencoded_8bit_bytes = preserve;
         self
@@ -193,38 +199,23 @@ pub fn decode_with_options<R: AsRef<[u8]>>(
 }
 
 fn _decode(input: &[u8], options: Options) -> Result<Vec<u8>, QuotedPrintableError> {
-    if options.parse_mode == ParseMode::Robust
-        && options.preserve_unencoded_8bit_bytes
-        && input.iter().any(|&byte| byte >= 0x80)
-    {
-        // Escape before the existing transfer decoder so soft breaks, malformed
-        // escapes and single-byte charsets retain their existing behavior.
-        let mut escaped = Vec::with_capacity(input.len());
-        for &byte in input {
-            if byte >= 0x80 {
-                escaped.push(b'=');
-                escaped.push(HEX_CHARS[(byte >> 4) as usize] as u8);
-                escaped.push(HEX_CHARS[(byte & 0x0F) as usize] as u8);
-            } else {
-                escaped.push(byte);
-            }
-        }
-        return _decode(&escaped, options.preserve_unencoded_8bit_bytes(false));
-    }
-
+    let preserve_8bit =
+        options.parse_mode == ParseMode::Robust && options.preserve_unencoded_8bit_bytes;
     let filtered = input
         .iter()
-        .filter_map(|&c| match c {
-            b'\t' | b'\r' | b'\n' | b' '..=b'~' => Some(c as char),
-            _ => None,
+        .copied()
+        .filter(|&c| match c {
+            b'\t' | b'\r' | b'\n' | b' '..=b'~' => true,
+            0x80..=0xFF => preserve_8bit,
+            _ => false,
         })
-        .collect::<String>();
+        .collect::<Vec<u8>>();
     if options.parse_mode == ParseMode::Strict {
         if filtered.len() != input.len() {
             return Err(QuotedPrintableError::InvalidByte);
         }
         let mut last = None;
-        for b in filtered.bytes() {
+        for &b in &filtered {
             if last == None && b == b'\n' {
                 return Err(QuotedPrintableError::InvalidByte);
             }
@@ -238,11 +229,24 @@ fn _decode(input: &[u8], options: Options) -> Result<Vec<u8>, QuotedPrintableErr
         }
     }
     let mut decoded = Vec::new();
-    let mut lines = filtered.lines();
+    // Match str::lines' treatment of a final newline without interpreting
+    // literal 8-bit bytes as UTF-8 or Unicode whitespace.
+    let lines_input = if filtered.ends_with(b"\n") {
+        &filtered[..filtered.len() - 1]
+    } else {
+        &filtered[..]
+    };
+    let mut lines = lines_input.split(|&byte| byte == b'\n');
     let mut add_line_break = None;
     loop {
         let mut bytes = match lines.next() {
-            Some(v) => v.trim_end().bytes(),
+            Some(v) => {
+                let end = v
+                    .iter()
+                    .rposition(|b| !b.is_ascii_whitespace())
+                    .map_or(0, |i| i + 1);
+                v[..end].iter().copied()
+            }
             None => {
                 if options.parse_mode == ParseMode::Strict && add_line_break == Some(false) {
                     return Err(QuotedPrintableError::IncompleteHexOctet);
@@ -313,8 +317,8 @@ fn _decode(input: &[u8], options: Options) -> Result<Vec<u8>, QuotedPrintableErr
         }
     }
 
-    if filtered.ends_with('\n') && add_line_break == Some(true) {
-        // the filtered.lines() call above ignores trailing newlines instead
+    if filtered.ends_with(b"\n") && add_line_break == Some(true) {
+        // The line splitting above ignores a trailing newline instead
         // of returning an empty string in the last element. So if there was
         // a trailing newline, let's tack on the CRLF to carry that through
         // the decoder.
@@ -942,6 +946,38 @@ mod tests {
 #[cfg(test)]
 mod unencoded_8bit_tests {
     use super::*;
+
+    #[test]
+    fn test_preserve_literal_8bit_bytes_next_to_malformed_escapes() {
+        let options = Options::default().preserve_unencoded_8bit_bytes(true);
+        for (input, expected) in [
+            (
+                b"caf=\xE9Z next=20line".as_slice(),
+                b"caf=\xE9Z next line".as_slice(),
+            ),
+            (b"caf=\xE9".as_slice(), b"caf=\xE9".as_slice()),
+            (b"=\xFF\r\n".as_slice(), b"=\xFF\r\n".as_slice()),
+        ] {
+            assert_eq!(
+                decode_with_options(input, options.clone()).unwrap(),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn preserve_unencoded_8bit_trims_only_ascii_line_whitespace() {
+        let input = b"Subject: caf\xE9\xA0 \t\r\nprice=3D\x85\t\n";
+        let expected = b"Subject: caf\xE9\xA0\r\nprice=\x85\r\n";
+        assert_eq!(
+            decode_with_options(
+                input,
+                Options::default().preserve_unencoded_8bit_bytes(true)
+            )
+            .unwrap(),
+            expected
+        );
+    }
 
     #[test]
     fn preserve_unencoded_8bit_is_opt_in_and_keeps_transfer_decoding() {
