@@ -41,9 +41,19 @@ pub struct Options {
     input_mode: InputMode,
     /// How strict to be while decoding.
     parse_mode: ParseMode,
+    preserve_unencoded_8bit_bytes: bool,
 }
 
 impl Options {
+    /// Preserve literal bytes above 0x7F in robust decoding instead of stripping
+    /// them. This tolerates non-conforming quoted-printable text produced by
+    /// some MHTML generators. Charset decoding remains the caller's task.
+    /// Defaults to false and has no effect in strict mode or when encoding.
+    pub fn preserve_unencoded_8bit_bytes(mut self, preserve: bool) -> Self {
+        self.preserve_unencoded_8bit_bytes = preserve;
+        self
+    }
+
     pub fn line_length_limit(mut self, limit: usize) -> Self {
         self.line_length_limit = limit;
         self
@@ -66,6 +76,7 @@ impl Default for Options {
             line_length_limit: 76,
             input_mode: InputMode::Text,
             parse_mode: ParseMode::Robust,
+            preserve_unencoded_8bit_bytes: false,
         }
     }
 }
@@ -182,6 +193,25 @@ pub fn decode_with_options<R: AsRef<[u8]>>(
 }
 
 fn _decode(input: &[u8], options: Options) -> Result<Vec<u8>, QuotedPrintableError> {
+    if options.parse_mode == ParseMode::Robust
+        && options.preserve_unencoded_8bit_bytes
+        && input.iter().any(|&byte| byte >= 0x80)
+    {
+        // Escape before the existing transfer decoder so soft breaks, malformed
+        // escapes and single-byte charsets retain their existing behavior.
+        let mut escaped = Vec::with_capacity(input.len());
+        for &byte in input {
+            if byte >= 0x80 {
+                escaped.push(b'=');
+                escaped.push(HEX_CHARS[(byte >> 4) as usize] as u8);
+                escaped.push(HEX_CHARS[(byte & 0x0F) as usize] as u8);
+            } else {
+                escaped.push(byte);
+            }
+        }
+        return _decode(&escaped, options.preserve_unencoded_8bit_bytes(false));
+    }
+
     let filtered = input
         .iter()
         .filter_map(|&c| match c {
@@ -906,5 +936,46 @@ mod tests {
         assert_eq!(decode(b"a\r\n", ParseMode::Strict).unwrap(), b"a\r\n");
         assert_eq!(decode(b"\r\n", ParseMode::Strict).unwrap(), b"\r\n");
         assert_eq!(decode(b"a=\r\n", ParseMode::Strict).unwrap(), b"a");
+    }
+}
+
+#[cfg(test)]
+mod unencoded_8bit_tests {
+    use super::*;
+
+    #[test]
+    fn preserve_unencoded_8bit_is_opt_in_and_keeps_transfer_decoding() {
+        let input = "Članak =3D café =\r\ncomplete".as_bytes();
+        let options = Options::default().preserve_unencoded_8bit_bytes(true);
+        assert_eq!(
+            decode_with_options(input, options).unwrap(),
+            "Članak = café complete".as_bytes()
+        );
+        assert_eq!(
+            decode(input, ParseMode::Robust).unwrap(),
+            b"lanak = caf complete"
+        );
+    }
+
+    #[test]
+    fn preserve_unencoded_8bit_keeps_single_byte_charsets_and_strict_errors() {
+        let input = b"caf\xe9 =3D r=E9sum=E9";
+        assert_eq!(
+            decode_with_options(
+                input,
+                Options::default().preserve_unencoded_8bit_bytes(true)
+            )
+            .unwrap(),
+            b"caf\xe9 = r\xe9sum\xe9"
+        );
+        assert_eq!(
+            decode_with_options(
+                input,
+                Options::default()
+                    .parse_mode(ParseMode::Strict)
+                    .preserve_unencoded_8bit_bytes(true)
+            ),
+            Err(QuotedPrintableError::InvalidByte)
+        );
     }
 }

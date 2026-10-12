@@ -7,7 +7,7 @@ A quoted-printable decoder and encoder.
 
 API
 ---
-quoted-printable exposes three functions at the moment:
+Common helpers:
 
 ```rust
     decode<R: AsRef<[u8]>>(input: R, mode: ParseMode) -> Result<Vec<u8>, QuotedPrintableError>
@@ -23,7 +23,12 @@ The decode function can be used to convert a quoted-printable string into the de
 The ParseMode option can be used to control whether the decoding is "strict" or "robust", as per the comments in that RFC.
 In general you should probably use "robust" decoding, as it will gracefully handle more malformed input.
 
-The encode and encode_to_str functions obviously do the reverse, and convert a set of raw bytes into quoted-printable.
+The encode and encode_to_str functions do the reverse, converting raw bytes into quoted-printable.
+
+For non-conforming MHTML containing literal 8-bit bytes, opt into retaining them
+with `decode_with_options(input, Options::default().preserve_unencoded_8bit_bytes(true))`.
+Charset decoding remains the caller's task. The default still strips invalid
+bytes, and strict mode still rejects them.
 
 no_std
 ---
